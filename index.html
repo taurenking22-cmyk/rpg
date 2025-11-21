@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>RPG: 9스테이지 + 아이템 + 스킬</title>
+  <title>탑뷰 RPG - 직업 선택 & 모바일 지원</title>
   <style>
     body {
       margin: 0;
@@ -13,9 +13,11 @@
       height: 100vh;
       color: #fff;
       font-family: system-ui, sans-serif;
+      overflow: hidden;
     }
     #gameWrapper {
       text-align: center;
+      position: relative;
     }
     canvas {
       background: #333;
@@ -26,18 +28,186 @@
       margin-top: 8px;
       font-size: 14px;
     }
+
+    /* 직업 선택 오버레이 */
+    #jobSelectOverlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(40,40,40,0.95), rgba(0,0,0,0.98));
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10;
+      color: #fff;
+      font-family: system-ui, sans-serif;
+    }
+
+    .job-panel {
+      text-align: center;
+      max-width: 800px;
+      padding: 24px;
+      background: rgba(20,20,20,0.9);
+      border-radius: 16px;
+      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+    }
+
+    .job-panel h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+
+    .job-cards {
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .job-card {
+      width: 180px;
+      padding: 16px;
+      background: #333;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s, border-color 0.15s;
+      border: 2px solid transparent;
+    }
+    .job-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.6);
+      background: #3b3b3b;
+      border-color: #00bcd4;
+    }
+    .job-icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+    .warrior-icon { color: #ff7043; }
+    .mage-icon    { color: #64b5f6; }
+    .archer-icon  { color: #aed581; }
+
+    .job-card h2 {
+      margin: 4px 0;
+    }
+    .job-card p {
+      font-size: 13px;
+      color: #ddd;
+      margin: 4px 0 0 0;
+    }
+    .job-tip {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #ccc;
+    }
+
+    /* 모바일 조작 UI */
+    #mobileControls {
+      position: fixed;
+      inset: auto 0 8px 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 16px;
+      pointer-events: none;
+      z-index: 5;
+    }
+
+    /* PC에서는 숨김 (폭 넓을 때) */
+    @media (min-width: 900px) {
+      #mobileControls {
+        display: none;
+      }
+    }
+
+    #mobileControls .dpad,
+    #mobileControls .actions {
+      pointer-events: auto;
+    }
+
+    .dpad {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .dpad .row {
+      display: flex;
+      gap: 4px;
+    }
+
+    .btn-dir,
+    .btn-act {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(30,30,30,0.9);
+      color: #fff;
+      font-size: 18px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
+      touch-action: manipulation;
+    }
+
+    .btn-act {
+      margin-left: 6px;
+    }
+
+    .btn-dir:active,
+    .btn-act:active {
+      transform: scale(0.92);
+      background: rgba(80,80,80,0.9);
+    }
   </style>
 </head>
 <body>
   <div id="gameWrapper">
     <canvas id="game" width="960" height="600"></canvas>
     <div id="info">
-      이동: 방향키 ← ↑ → ↓ |
-      A: 기본공격 |
-      X: 웨이브(스킬) |
-      C: 스턴(스킬) |
-      S: 홀드 무적(방어)<br>
-      몬스터 처치 시 랜덤으로 ATK/DEF/SPD 아이템 드랍, 공격하면서 스킬 게이지를 채워 스킬을 사용해보세요!
+      PC: 방향키 이동 | A: 공격 | X: 스킬1 | C: 스킬2 | S: 방어(홀드)<br>
+      모바일: 아래 버튼 터치로 플레이
+    </div>
+  </div>
+
+  <!-- 직업 선택 오버레이 -->
+  <div id="jobSelectOverlay">
+    <div class="job-panel">
+      <h1>직업을 선택하세요</h1>
+      <div class="job-cards">
+        <div class="job-card" data-job="warrior">
+          <div class="job-icon warrior-icon">🗡</div>
+          <h2>전사</h2>
+          <p>높은 체력과 방어력, 강력한 근접 공격</p>
+        </div>
+        <div class="job-card" data-job="mage">
+          <div class="job-icon mage-icon">🔥</div>
+          <h2>마법사</h2>
+          <p>마법탄과 강력한 마법 스킬</p>
+        </div>
+        <div class="job-card" data-job="archer">
+          <div class="job-icon archer-icon">🏹</div>
+          <h2>궁수</h2>
+          <p>빠른 원거리 공격과 기동성</p>
+        </div>
+      </div>
+      <div class="job-tip">PC는 키보드, 모바일은 아래 버튼으로 조작할 수 있습니다.</div>
+    </div>
+  </div>
+
+  <!-- 모바일 전용 조작 버튼 -->
+  <div id="mobileControls">
+    <div class="dpad">
+      <button class="btn-dir" data-dir="up">▲</button>
+      <div class="row">
+        <button class="btn-dir" data-dir="left">◀</button>
+        <button class="btn-dir" data-dir="down">▼</button>
+        <button class="btn-dir" data-dir="right">▶</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn-act" data-act="a">A</button>
+      <button class="btn-act" data-act="x">X</button>
+      <button class="btn-act" data-act="c">C</button>
+      <button class="btn-act" data-act="s">S</button>
     </div>
   </div>
 
@@ -68,6 +238,60 @@
       keys[e.key] = false;
     });
 
+    // 모바일 가상 키
+    const virtualKeys = {
+      ArrowUp: false,
+      ArrowDown: false,
+      ArrowLeft: false,
+      ArrowRight: false,
+      a: false,
+      x: false,
+      c: false,
+      s: false,
+    };
+
+    function setVirtualKey(key, pressed) {
+      virtualKeys[key] = pressed;
+    }
+
+    // 방향 버튼 이벤트
+    document.querySelectorAll(".btn-dir").forEach(btn => {
+      const dir = btn.getAttribute("data-dir");
+      const map = { up:"ArrowUp", down:"ArrowDown", left:"ArrowLeft", right:"ArrowRight" };
+      const key = map[dir];
+
+      const press = (e) => { e.preventDefault(); setVirtualKey(key, true); };
+      const release = (e) => { e.preventDefault(); setVirtualKey(key, false); };
+
+      btn.addEventListener("touchstart", press, { passive: false });
+      btn.addEventListener("touchend", release);
+      btn.addEventListener("touchcancel", release);
+      btn.addEventListener("mousedown", press);
+      btn.addEventListener("mouseup", release);
+      btn.addEventListener("mouseleave", release);
+    });
+
+    // 액션 버튼 이벤트
+    document.querySelectorAll(".btn-act").forEach(btn => {
+      const act = btn.getAttribute("data-act"); // a, x, c, s
+      const press = (e) => { e.preventDefault(); setVirtualKey(act, true); };
+      const release = (e) => { e.preventDefault(); setVirtualKey(act, false); };
+
+      btn.addEventListener("touchstart", press, { passive: false });
+      btn.addEventListener("touchend", release);
+      btn.addEventListener("touchcancel", release);
+      btn.addEventListener("mousedown", press);
+      btn.addEventListener("mouseup", release);
+      btn.addEventListener("mouseleave", release);
+    });
+
+    function isPressed(key) {
+      if (key.length === 1) {
+        return !!keys[key] || !!keys[key.toUpperCase()] || !!virtualKeys[key.toLowerCase()];
+      }
+      return !!keys[key] || !!virtualKeys[key];
+    }
+
     // ===== 유틸 =====
     function clamp(v, min, max) {
       return Math.max(min, Math.min(max, v));
@@ -95,7 +319,7 @@
       defense: 0,
       dir: "down",
 
-      // 기본 공격
+      // 기본 공격 (전사용 근접)
       isAttacking: false,
       attackTime: 0,
       attackDuration: 120,
@@ -116,18 +340,95 @@
       skillGaugeOnHit: 2.5,
       skillGaugeOnKill: 10,
 
-      // 스킬 쿨/코스트
-      skillXCost: 20,
-      skillCCost: 40,
+      // 스킬 코스트/쿨
+      skillXCost: 40,
+      skillCCost: 60,
       lastSkillXTime: 0,
       lastSkillCTime: 0,
       skillXCooldown: 1000,
       skillCCooldown: 3000,
 
-      // 방어 스킬(S) 상태
+      // 방어 스킬(S)
       isGuarding: false,
-      guardDrainPerSec: 10, // 초당 게이지 소모
+      guardDrainPerSec: 5, // 초당 소모 (1/3로 느리게)
+
+      // 직업별 스킬 함수(필요시 덮어씀)
+      performBasicAttack: null,
+      performSkillX: null,
+      performSkillC: null,
     };
+
+    let selectedJob = null;
+
+    const JOB_STATS = {
+      warrior: {
+        color: "#4caf50",
+        hp: 130,
+        atk: 24,
+        def: 2,
+        spd: 3.0,
+        atkCooldown: 250,
+        xCost: 40,
+        cCost: 60,
+      },
+      mage: {
+        color: "#64b5f6",
+        hp: 85,
+        atk: 18,
+        def: 0,
+        spd: 2.8,
+        atkCooldown: 380,
+        xCost: 45,
+        cCost: 65,
+      },
+      archer: {
+        color: "#aed581",
+        hp: 95,
+        atk: 20,
+        def: 1,
+        spd: 3.5,
+        atkCooldown: 160,
+        xCost: 40,
+        cCost: 55,
+      },
+    };
+
+    function applyJobStats(jobKey) {
+      const s = JOB_STATS[jobKey];
+      player.color = s.color;
+      player.maxHp = s.hp;
+      player.hp = s.hp;
+      player.attackDamage = s.atk;
+      player.defense = s.def;
+      player.speed = s.spd;
+      player.attackCooldown = s.atkCooldown;
+      player.skillXCost = s.xCost;
+      player.skillCCost = s.cCost;
+
+      // 직업별 스킬 설정
+      if (jobKey === "warrior") {
+        player.performBasicAttack = warriorBasicAttack;
+        player.performSkillX = warriorSkillX;
+        player.performSkillC = warriorSkillC;
+      } else if (jobKey === "mage") {
+        player.performBasicAttack = mageBasicAttack;
+        player.performSkillX = mageSkillX;
+        player.performSkillC = mageSkillC;
+      } else if (jobKey === "archer") {
+        player.performBasicAttack = archerBasicAttack;
+        player.performSkillX = archerSkillX;
+        player.performSkillC = archerSkillC;
+      }
+    }
+
+    document.querySelectorAll(".job-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const job = card.getAttribute("data-job");
+        selectedJob = job;
+        applyJobStats(job);
+        document.getElementById("jobSelectOverlay").style.display = "none";
+      });
+    });
 
     function addSkillGauge(amount) {
       player.skillGauge = clamp(
@@ -155,7 +456,7 @@
     }
 
     function damagePlayer(rawDmg) {
-      if (player.isGuarding) return; // 방어 스킬 중이면 무적
+      if (player.isGuarding) return;
       const actual = Math.max(1, rawDmg - player.defense);
       player.hp -= actual;
       if (player.hp < 0) player.hp = 0;
@@ -231,7 +532,7 @@
       }
     };
 
-    // ===== 스테이지 (3x3 = 9개) =====
+    // ===== 스테이지 =====
     const STAGE_ROWS = 3;
     const STAGE_COLS = 3;
     const NUM_STAGES = STAGE_ROWS * STAGE_COLS;
@@ -282,6 +583,7 @@
       enemyProjectiles.length = 0;
       skillWaves.length = 0;
       items.length = 0;
+      playerProjectiles.length = 0;
 
       if (fromDir === "north") {
         player.y = WORLD_HEIGHT - player.h - 80;
@@ -298,10 +600,11 @@
       }
     }
 
-    // ===== 적 / 투사체 / 스킬 웨이브 / 아이템 =====
+    // ===== 적 / 투사체 / 스킬 웨이브 / 아이템 / 플레이어 투사체 =====
     const enemyProjectiles = [];
     const skillWaves = [];
     const items = [];
+    const playerProjectiles = [];
 
     const ITEM_TYPES = {
       attack: {
@@ -359,24 +662,20 @@
         lastHitTime: 0,
         xpReward: cfg.xpReward * (0.7 + diff * 0.3),
 
-        // 순찰
         baseX: x,
         baseY: y,
         patrolRadius: isDragon ? 80 : 60,
         patrolAngle: Math.random() * Math.PI * 2,
         patrolTurnSpeed: 0.0015,
 
-        // 리스폰
         isDead: false,
         deathTime: 0,
         respawnDelay: isDragon ? 0 : 10000,
         rank: 1,
 
-        // 원거리
         lastShotTime: 0,
         shotCooldown: cfg.hitCooldown,
 
-        // 스턴
         stunUntil: 0,
       };
     }
@@ -417,54 +716,137 @@
     // 초기 스테이지
     populateStage(stages[currentStageIndex]);
 
-    // ===== 스킬 함수 =====
-    function tryUseSkillX() {
-      const now = performance.now();
-      if (now - player.lastSkillXTime < player.skillXCooldown) return;
-      if (player.skillGauge < player.skillXCost) return;
+    // ===== 직업별 기본 공격/스킬 구현 =====
+    function getDirectionVector() {
+      if (player.dir === "right") return { dx: 1, dy: 0, angle: 0 };
+      if (player.dir === "left")  return { dx: -1, dy: 0, angle: Math.PI };
+      if (player.dir === "up")    return { dx: 0, dy: -1, angle: -Math.PI/2 };
+      return { dx: 0, dy: 1, angle: Math.PI/2 }; // down
+    }
 
-      player.lastSkillXTime = now;
-      player.skillGauge -= player.skillXCost;
-
-      // 웨이브 생성 (정면 2칸 정도)
-      const range = 160; // 약 2~4칸
-      const width = 40;
-
-      let dirX = 0, dirY = 0;
-      if (player.dir === "right") dirX = 1;
-      else if (player.dir === "left") dirX = -1;
-      else if (player.dir === "up") dirY = -1;
-      else if (player.dir === "down") dirY = 1;
-
+    function spawnPlayerProjectile(speed, damage, color, life = 2000, size = 6) {
+      const dir = getDirectionVector();
       const startX = player.x + player.w / 2;
       const startY = player.y + player.h / 2;
+      playerProjectiles.push({
+        x: startX,
+        y: startY,
+        vx: dir.dx,
+        vy: dir.dy,
+        speed,
+        damage,
+        size,
+        color,
+        life,
+      });
+    }
 
+    // 전사 기본공격: 기존 근접 베기
+    function warriorBasicAttack(now) {
+      if (!player.isAttacking && now - player.lastAttackTime > player.attackCooldown) {
+        player.isAttacking = true;
+        player.attackTime = 0;
+        player.lastAttackTime = now;
+      }
+    }
+
+    // 마법사 기본공격: 마법탄
+    function mageBasicAttack(now) {
+      if (now - player.lastAttackTime < player.attackCooldown) return;
+      player.lastAttackTime = now;
+      spawnPlayerProjectile(7, player.attackDamage, "#66ccff", 2000, 7);
+    }
+
+    // 궁수 기본공격: 빠른 화살
+    function archerBasicAttack(now) {
+      if (now - player.lastAttackTime < player.attackCooldown) return;
+      player.lastAttackTime = now;
+      spawnPlayerProjectile(9, player.attackDamage * 0.8, "#ffee66", 1800, 5);
+    }
+
+    // 공용 웨이브 스폰
+    function spawnWave(range, width, damage, color) {
+      const dir = getDirectionVector();
+      const startX = player.x + player.w / 2;
+      const startY = player.y + player.h / 2;
       skillWaves.push({
         x: startX,
         y: startY,
-        dirX,
-        dirY,
+        dirX: dir.dx,
+        dirY: dir.dy,
         speed: 8,
         length: range,
         width,
         traveled: 0,
-        damage: player.attackDamage * 1.6,
-        hitSet: new Set(), // 이미 맞은 적 ID 방지
+        damage,
+        color: color || "rgba(0,255,255,0.5)",
+        hitSet: new Set(),
       });
     }
 
-    function tryUseSkillC() {
-      const now = performance.now();
-      if (now - player.lastSkillCTime < player.skillCCooldown) return;
+    // 전사 스킬 X: 짧지만 강한 충격파
+    function warriorSkillX(now) {
+      const t = now ?? performance.now();
+      if (t - player.lastSkillXTime < player.skillXCooldown) return;
+      if (player.skillGauge < player.skillXCost) return;
+      player.lastSkillXTime = t;
+      player.skillGauge -= player.skillXCost;
+
+      const range = 160;
+      const width = 40;
+      const dmg = player.attackDamage * 1.7;
+      spawnWave(range, width, dmg, "rgba(0,255,255,0.5)");
+    }
+
+    // 마법사 스킬 X: 더 길고 강한 마법 웨이브
+    function mageSkillX(now) {
+      const t = now ?? performance.now();
+      if (t - player.lastSkillXTime < player.skillXCooldown) return;
+      if (player.skillGauge < player.skillXCost) return;
+      player.lastSkillXTime = t;
+      player.skillGauge -= player.skillXCost;
+
+      const range = 220;
+      const width = 50;
+      const dmg = player.attackDamage * 2.0;
+      spawnWave(range, width, dmg, "rgba(255,120,0,0.5)");
+    }
+
+    // 궁수 스킬 X: 가늘지만 멀리 나가는 관통샷
+    function archerSkillX(now) {
+      const t = now ?? performance.now();
+      if (t - player.lastSkillXTime < player.skillXCooldown) return;
+      if (player.skillGauge < player.skillXCost) return;
+      player.lastSkillXTime = t;
+      player.skillGauge -= player.skillXCost;
+
+      const range = 260;
+      const width = 24;
+      const dmg = player.attackDamage * 1.5;
+      spawnWave(range, width, dmg, "rgba(200,255,0,0.5)");
+    }
+
+    // 전사 스킬 C: 기본 스턴
+    function warriorSkillC(now) {
+      useStunSkill(now, 3000, 220, Math.PI / 2);
+    }
+
+    // 마법사 스킬 C: 더 넓은 범위, 약간 긴 스턴
+    function mageSkillC(now) {
+      useStunSkill(now, 3500, 260, Math.PI * 0.7);
+    }
+
+    // 궁수 스킬 C: 짧은 스턴 + 회피용 (스턴은 짧게)
+    function archerSkillC(now) {
+      useStunSkill(now, 1800, 200, Math.PI / 2);
+    }
+
+    function useStunSkill(now, stunDuration, stunRange, angleWidth) {
+      const t = now ?? performance.now();
+      if (t - player.lastSkillCTime < player.skillCCooldown) return;
       if (player.skillGauge < player.skillCCost) return;
-
-      player.lastSkillCTime = now;
+      player.lastSkillCTime = t;
       player.skillGauge -= player.skillCCost;
-
-      // 전방 부채꼴 범위 스턴 (3초)
-      const stunDuration = 3000;
-      const stunRange = 220;
-      const angleWidth = Math.PI / 2; // 90도
 
       const px = player.x + player.w / 2;
       const py = player.y + player.h / 2;
@@ -482,7 +864,6 @@
         const dy = cy - py;
         const dist = Math.hypot(dx, dy);
         if (dist > stunRange) return;
-
         const ang = Math.atan2(dy, dx);
         let diff = ang - dirAngle;
         while (diff > Math.PI) diff -= 2 * Math.PI;
@@ -499,30 +880,31 @@
     function update(dt) {
       const now = performance.now();
 
-      // 방어 스킬(S) 상태
-      const wantGuard = keys["s"] || keys["S"];
+      if (!selectedJob) {
+        // 직업 선택 전에는 게임 로직 정지
+        return;
+      }
+
+      // 방어 스킬(S)
+      const wantGuard = isPressed("s");
       if (wantGuard && player.skillGauge > 0) {
         player.isGuarding = true;
       } else {
         player.isGuarding = false;
       }
-
-      // 방어 중 게이지 소모
       if (player.isGuarding) {
         const drain = (player.guardDrainPerSec * dt) / 1000;
         player.skillGauge = clamp(player.skillGauge - drain, 0, player.skillGaugeMax);
-        if (player.skillGauge <= 0) {
-          player.isGuarding = false;
-        }
+        if (player.skillGauge <= 0) player.isGuarding = false;
       }
 
       // 이동
       let dx = 0;
       let dy = 0;
-      if (keys["ArrowLeft"])  { dx -= 1; player.dir = "left"; }
-      if (keys["ArrowRight"]) { dx += 1; player.dir = "right"; }
-      if (keys["ArrowUp"])    { dy -= 1; player.dir = "up"; }
-      if (keys["ArrowDown"])  { dy += 1; player.dir = "down"; }
+      if (isPressed("ArrowLeft"))  { dx -= 1; player.dir = "left"; }
+      if (isPressed("ArrowRight")) { dx += 1; player.dir = "right"; }
+      if (isPressed("ArrowUp"))    { dy -= 1; player.dir = "up"; }
+      if (isPressed("ArrowDown"))  { dy += 1; player.dir = "down"; }
 
       if (dx !== 0 || dy !== 0) {
         const len = Math.hypot(dx, dy);
@@ -537,32 +919,33 @@
       player.y = clamp(player.y, 0, WORLD_HEIGHT - player.h);
 
       // 기본 공격 (A)
-      if (keys["a"] || keys["A"]) {
-        if (!player.isAttacking && now - player.lastAttackTime > player.attackCooldown) {
-          player.isAttacking = true;
-          player.attackTime = 0;
-          player.lastAttackTime = now;
-        }
+      if (isPressed("a") && player.performBasicAttack) {
+        player.performBasicAttack(now);
       }
 
-      if (player.isAttacking) {
-        player.attackTime += dt;
-        if (player.attackTime >= player.attackDuration) {
-          player.isAttacking = false;
+      // 전사 근접 공격 타이머 업데이트
+      if (selectedJob === "warrior") {
+        if (player.isAttacking) {
+          player.attackTime += dt;
+          if (player.attackTime >= player.attackDuration) {
+            player.isAttacking = false;
+          }
         }
+      } else {
+        player.isAttacking = false;
       }
 
       // 스킬 입력
-      if (keys["x"] || keys["X"]) {
-        tryUseSkillX();
+      if (isPressed("x") && player.performSkillX) {
+        player.performSkillX(now);
       }
-      if (keys["c"] || keys["C"]) {
-        tryUseSkillC();
+      if (isPressed("c") && player.performSkillC) {
+        player.performSkillC(now);
       }
 
-      // 기본 공격 범위
+      // 기본 공격 범위(전사만)
       let attackBox = null;
-      if (player.isAttacking) {
+      if (selectedJob === "warrior" && player.isAttacking) {
         const range = 28;
         const thickness = 24;
         if (player.dir === "right") {
@@ -666,7 +1049,6 @@
               }
             }
           } else {
-            // 순찰
             e.patrolAngle += e.patrolTurnSpeed * dt;
             const targetX = e.baseX + Math.cos(e.patrolAngle) * e.patrolRadius;
             const targetY = e.baseY + Math.sin(e.patrolAngle) * e.patrolRadius;
@@ -682,41 +1064,31 @@
         e.y += moveY;
         e.x = clamp(e.x, 0, WORLD_WIDTH - e.w);
         e.y = clamp(e.y, 0, WORLD_HEIGHT - e.h);
-// 플레이어와 충돌 시 관통하지 않도록 밀어내기
-const pRect = { x: player.x, y: player.y, w: player.w, h: player.h };
-const eRect = { x: e.x, y: e.y, w: e.w, h: e.h };
 
-if (rectsOverlap(eRect, pRect)) {
-  // 플레이어 중심과 몬스터 중심 사이의 벡터
-  const px = player.x + player.w / 2;
-  const py = player.y + player.h / 2;
-  const ex = e.x + e.w / 2;
-  const ey = e.y + e.h / 2;
+        // 플레이어와 충돌 시 관통 방지 (몬스터를 밀어냄)
+        const pRect = { x: player.x, y: player.y, w: player.w, h: player.h };
+        const eRect = { x: e.x, y: e.y, w: e.w, h: e.h };
+        if (rectsOverlap(eRect, pRect)) {
+          const px2 = player.x + player.w / 2;
+          const py2 = player.y + player.h / 2;
+          const ex2 = e.x + e.w / 2;
+          const ey2 = e.y + e.h / 2;
+          let dx2 = ex2 - px2;
+          let dy2 = ey2 - py2;
+          let dist2 = Math.hypot(dx2, dy2) || 1;
+          const minDist = (Math.max(player.w, player.h) + Math.max(e.w, e.h)) / 2;
+          const overlap = minDist - dist2;
+          if (overlap > 0) {
+            dx2 /= dist2;
+            dy2 /= dist2;
+            e.x += dx2 * overlap;
+            e.y += dy2 * overlap;
+            e.x = clamp(e.x, 0, WORLD_WIDTH - e.w);
+            e.y = clamp(e.y, 0, WORLD_HEIGHT - e.h);
+          }
+        }
 
-  let dx2 = ex - px;
-  let dy2 = ey - py;
-  let dist2 = Math.hypot(dx2, dy2) || 1;
-
-  // 서로 겹치지 않도록 떨어뜨릴 최소 거리
-  const minDist =
-    (Math.max(player.w, player.h) + Math.max(e.w, e.h)) / 2;
-
-  const overlap = minDist - dist2;
-  if (overlap > 0) {
-    dx2 /= dist2;
-    dy2 /= dist2;
-    // 플레이어 기준 바깥 방향으로 몬스터를 밀어냄
-    e.x += dx2 * overlap;
-    e.y += dy2 * overlap;
-
-    // 다시 월드 밖으로 안 나가게 한 번 더 클램프
-    e.x = clamp(e.x, 0, WORLD_WIDTH - e.w);
-    e.y = clamp(e.y, 0, WORLD_HEIGHT - e.h);
-  }
-}
-
-
-        // 기본 공격 피격
+        // 전사 근접 공격 피격
         if (attackBox && !e.isDead) {
           const enemyRect = { x: e.x, y: e.y, w: e.w, h: e.h };
           if (rectsOverlap(attackBox, enemyRect)) {
@@ -753,7 +1125,7 @@ if (rectsOverlap(eRect, pRect)) {
         };
         enemies.forEach((e) => {
           if (e.isDead) return;
-          const key = e.type + "_" + e.baseX + "_" + e.baseY;
+          const key = e.type + "_" + e.baseX + "_" + e.baseY + "_" + e.rank;
           if (wv.hitSet.has(key)) return;
           const enemyRect = { x: e.x, y: e.y, w: e.w, h: e.h };
           if (rectsOverlap(rect, enemyRect)) {
@@ -795,6 +1167,41 @@ if (rectsOverlap(eRect, pRect)) {
         }
       }
 
+      // 플레이어 투사체
+      for (let i = playerProjectiles.length - 1; i >= 0; i--) {
+        const p = playerProjectiles[i];
+        p.x += p.vx * p.speed;
+        p.y += p.vy * p.speed;
+        p.life -= dt;
+
+        const projRect = { x: p.x, y: p.y, w: p.size, h: p.size };
+
+        enemies.forEach((e) => {
+          if (e.isDead) return;
+          const enemyRect = { x: e.x, y: e.y, w: e.w, h: e.h };
+          if (rectsOverlap(projRect, enemyRect)) {
+            let dmg = p.damage;
+            if (e.type === "dragon" && player.level < 15) {
+              dmg *= 0.3;
+            }
+            e.hp -= dmg;
+            addSkillGauge(player.skillGaugeOnHit);
+            if (e.hp <= 0) {
+              handleEnemyDeath(e);
+            }
+            p.life = 0;
+          }
+        });
+
+        if (
+          p.life <= 0 ||
+          p.x < 0 || p.x > WORLD_WIDTH ||
+          p.y < 0 || p.y > WORLD_HEIGHT
+        ) {
+          playerProjectiles.splice(i, 1);
+        }
+      }
+
       // 아이템 획득
       for (let i = items.length - 1; i >= 0; i--) {
         const it = items[i];
@@ -831,7 +1238,6 @@ if (rectsOverlap(eRect, pRect)) {
       gainXP(e.xpReward);
       addSkillGauge(player.skillGaugeOnKill);
 
-      // 아이템 랜덤 드랍 (예: 40% 확률)
       if (Math.random() < 0.4) {
         const keys = Object.keys(ITEM_TYPES);
         const type = keys[Math.floor(Math.random() * keys.length)];
@@ -932,7 +1338,7 @@ if (rectsOverlap(eRect, pRect)) {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // 바닥
+      // 바닥 격자
       ctx.fillStyle = "#303030";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -989,13 +1395,11 @@ if (rectsOverlap(eRect, pRect)) {
         if (e.isDead) return;
         const sx = e.x - offsetX;
         const sy = e.y - offsetY;
-
         const stunned = performance.now() < e.stunUntil;
 
         ctx.fillStyle = e.color;
         ctx.fillRect(sx, sy, e.w, e.h);
 
-        // 스턴 상태면 테두리
         if (stunned) {
           ctx.strokeStyle = "#ffff00";
           ctx.lineWidth = 2;
@@ -1025,11 +1429,19 @@ if (rectsOverlap(eRect, pRect)) {
         ctx.fillRect(sx, sy, p.size, p.size);
       });
 
+      // 플레이어 투사체
+      playerProjectiles.forEach((p) => {
+        const sx = p.x - offsetX;
+        const sy = p.y - offsetY;
+        ctx.fillStyle = p.color || "#ffffff";
+        ctx.fillRect(sx, sy, p.size, p.size);
+      });
+
       // 스킬 웨이브
       skillWaves.forEach((wv) => {
         const sx = wv.x - offsetX;
         const sy = wv.y - offsetY;
-        ctx.fillStyle = "rgba(0,255,255,0.5)";
+        ctx.fillStyle = wv.color || "rgba(0,255,255,0.5)";
         ctx.beginPath();
         ctx.arc(sx, sy, wv.width / 2, 0, Math.PI * 2);
         ctx.fill();
@@ -1042,7 +1454,7 @@ if (rectsOverlap(eRect, pRect)) {
       ctx.fillStyle = player.isGuarding ? "#90caf9" : player.color;
       ctx.fillRect(px, py, player.w, player.h);
 
-      // 방향 눈
+      // 눈
       ctx.fillStyle = "#000";
       const eyeSize = 4;
       if (player.dir === "right") {
@@ -1055,8 +1467,8 @@ if (rectsOverlap(eRect, pRect)) {
         ctx.fillRect(px + 7, py + player.h - 8, eyeSize, eyeSize);
       }
 
-      // 기본 공격 범위
-      if (player.isAttacking) {
+      // 전사 공격 범위 표시
+      if (selectedJob === "warrior" && player.isAttacking) {
         const range = 28;
         const thickness = 24;
         let ax, ay, aw, ah;
@@ -1115,7 +1527,7 @@ if (rectsOverlap(eRect, pRect)) {
       const panelY = 38;
       ctx.font = "14px system-ui";
       ctx.fillText(
-        `Lv.${player.level}  XP: ${Math.floor(player.xp)}/${player.xpToNext}`,
+        `직업: ${selectedJob ? selectedJob.toUpperCase() : "NONE"}  Lv.${player.level}  XP: ${Math.floor(player.xp)}/${player.xpToNext}`,
         16,
         panelY
       );
@@ -1147,14 +1559,13 @@ if (rectsOverlap(eRect, pRect)) {
       const canX = player.skillGauge >= player.skillXCost ? "READY" : "…";
       const canC = player.skillGauge >= player.skillCCost ? "READY" : "…";
       ctx.fillStyle = canX === "READY" ? "#00e676" : "#ccc";
-      ctx.fillText(`X: Wave (${player.skillXCost}) ${canX}`, sgX, sgY + 24);
+      ctx.fillText(`X: Skill1 (${player.skillXCost}) ${canX}`, sgX, sgY + 24);
       ctx.fillStyle = canC === "READY" ? "#00e676" : "#ccc";
-      ctx.fillText(`C: Stun (${player.skillCCost}) ${canC}`, sgX, sgY + 40);
+      ctx.fillText(`C: Skill2 (${player.skillCCost}) ${canC}`, sgX, sgY + 40);
 
       ctx.fillStyle = player.isGuarding ? "#00e676" : "#ccc";
       ctx.fillText(`S: Guard (HOLD, 게이지 지속 소모)`, sgX, sgY + 56);
 
-      // 게임 오버
       if (player.hp <= 0) {
         ctx.fillStyle = "rgba(0,0,0,0.6)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
