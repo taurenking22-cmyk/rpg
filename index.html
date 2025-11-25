@@ -2,32 +2,32 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>슈팅게임 - 모바일 터치 지원 버전</title>
+  <title>모바일냥코대전!</title>
   <style>
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
       background: #111;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
       font-family: system-ui, sans-serif;
       color: #fff;
       touch-action: none;
       -webkit-user-select: none;
       user-select: none;
+      overflow: hidden;
     }
     #gameContainer {
       position: relative;
-      max-width: 720px;
       width: 100vw;
+      height: 100vh;
     }
     #gameCanvas {
       background: #000;
       border: 2px solid #555;
       display: block;
       width: 100%;
-      height: auto;
+      height: 100%;
     }
     #ui {
       position: absolute;
@@ -77,7 +77,7 @@
       align-items: center;
       padding: 0 8px;
       box-sizing: border-box;
-      pointer-events: none; /* 안쪽 요소만 터치 받도록 */
+      pointer-events: none;
     }
 
     #joystickContainer {
@@ -134,7 +134,6 @@
     }
 
     @media (min-width: 900px) {
-      /* PC에선 컨트롤 조금 작게 */
       #joystickContainer {
         width: 120px;
         height: 120px;
@@ -166,7 +165,7 @@
     </div>
     <div id="gameOverText"></div>
 
-    <!-- 🔥 모바일 터치 컨트롤 -->
+    <!-- 모바일 터치 컨트롤 -->
     <div id="mobileControls">
       <div id="joystickContainer">
         <div id="joystickBase"></div>
@@ -201,7 +200,51 @@
     const WIDTH = canvas.width;
     const HEIGHT = canvas.height;
 
-    // 🐱 플레이어 (고양이)
+    // 고양이 타입 정의
+    const CAT_TYPES = {
+      cheese: {
+        id: "cheese",
+        name: "치즈냥",
+        furColor: "#ffcc80",
+        earInner: "#ffb74d",
+        speed: 6,
+        bulletSpeed: 9,
+        homingCount: 1,
+        desc: "균형형: 기동성/탄속/유도탄 모두 평균"
+      },
+      black: {
+        id: "black",
+        name: "검은냥",
+        furColor: "#444",
+        earInner: "#757575",
+        speed: 7.6,
+        bulletSpeed: 9,
+        homingCount: 1,
+        desc: "고기동: 이동속도 빠름, 유도탄 1개"
+      },
+      party: {
+        id: "party",
+        name: "파티냥",
+        furColor: "#f48fb1",
+        earInner: "#ff80ab",
+        speed: 6,
+        bulletSpeed: 10,
+        homingCount: 2,
+        desc: "화력형: 탄속 빠르고 유도탄 2개"
+      }
+    };
+
+    const catOptions = [
+      { id: "cheese", x: WIDTH/2 - 200, y: HEIGHT/2, w: 140, h: 220 },
+      { id: "black",  x: WIDTH/2,       y: HEIGHT/2, w: 140, h: 220 },
+      { id: "party",  x: WIDTH/2 + 200, y: HEIGHT/2, w: 140, h: 220 }
+    ];
+
+    let selectedCatType = null;
+    let selectedCat = null;
+    let hasSelectedCat = false;
+
+    // 플레이어
     const player = {
       x: WIDTH / 2,
       y: HEIGHT - 150,
@@ -240,7 +283,7 @@
 
     let isVictory = false;
 
-    // ======== 키보드 입력 ========
+    // ===== 키보드 입력 =====
     window.addEventListener("keydown", (e) => {
       keys[e.code] = true;
 
@@ -248,11 +291,9 @@
         restartGame();
       }
 
-      if (!gameOver && e.code === "KeyZ") {
-        useBomb();
-      }
-      if (!gameOver && e.code === "KeyX") {
-        useMelee();
+      if (!gameOver && hasSelectedCat) {
+        if (e.code === "KeyZ") useBomb();
+        if (e.code === "KeyX") useMelee();
       }
     });
 
@@ -260,12 +301,48 @@
       keys[e.code] = false;
     });
 
-    // 게임오버 시 모바일에서 재시작: 캔버스 탭
-    canvas.addEventListener("click", () => {
-      if (gameOver) restartGame();
-    });
+    // 캔버스 클릭/터치 → 오프닝에서 캐릭터 선택, 게임오버일 땐 재시작
+    function getCanvasPos(evt) {
+      const rect = canvas.getBoundingClientRect();
+      let clientX, clientY;
+      if (evt.touches && evt.touches[0]) {
+        clientX = evt.touches[0].clientX;
+        clientY = evt.touches[0].clientY;
+      } else {
+        clientX = evt.clientX;
+        clientY = evt.clientY;
+      }
+      const x = (clientX - rect.left) * (canvas.width / rect.width);
+      const y = (clientY - rect.top) * (canvas.height / rect.height);
+      return { x, y };
+    }
 
-    // ======== 모바일 조이스틱 입력 ========
+    function handleCanvasPointer(evt) {
+      evt.preventDefault();
+      const pos = getCanvasPos(evt);
+
+      if (!hasSelectedCat) {
+        // 캐릭터 선택
+        for (const opt of catOptions) {
+          if (
+            pos.x > opt.x - opt.w/2 &&
+            pos.x < opt.x + opt.w/2 &&
+            pos.y > opt.y - opt.h/2 &&
+            pos.y < opt.y + opt.h/2
+          ) {
+            selectCat(opt.id);
+            return;
+          }
+        }
+      } else if (gameOver) {
+        restartGame();
+      }
+    }
+
+    canvas.addEventListener("click", handleCanvasPointer);
+    canvas.addEventListener("touchstart", handleCanvasPointer, { passive: false });
+
+    // ===== 조이스틱 =====
     const joystickState = {
       active: false,
       centerX: 0,
@@ -274,7 +351,6 @@
 
     function updateDirFromJoystick(dx, dy) {
       const dead = 10;
-      // 초기화
       keys["ArrowLeft"] = false;
       keys["ArrowRight"] = false;
       keys["ArrowUp"] = false;
@@ -342,7 +418,7 @@
 
     resetJoystickStickPosition();
 
-    // ======== 모바일 버튼 입력 ========
+    // 모바일 버튼: SHOT(홀드), MELEE/BOMB(탭)
     function attachButtonHold(button, keyCode) {
       const down = (e) => {
         e.preventDefault();
@@ -355,55 +431,67 @@
       button.addEventListener("touchstart", down, { passive: false });
       button.addEventListener("touchend", up, { passive: false });
       button.addEventListener("touchcancel", up, { passive: false });
-      // PC에서 마우스로 눌러도 작동하게
       button.addEventListener("mousedown", down);
       window.addEventListener("mouseup", up);
     }
-
-    // SHOT 버튼은 Space키처럼 동작 (연사)
     attachButtonHold(btnShoot, "Space");
 
-    // MELEE / BOMB 은 "한 번" 사용하는 스킬 → 탭으로 발동
     function attachSkillTap(button, skillFn) {
       button.addEventListener("touchstart", (e) => {
         e.preventDefault();
-        skillFn();
+        if (!gameOver && hasSelectedCat) skillFn();
       }, { passive: false });
       button.addEventListener("click", (e) => {
         e.preventDefault();
-        skillFn();
+        if (!gameOver && hasSelectedCat) skillFn();
       });
     }
+    attachSkillTap(btnMelee, () => useMelee());
+    attachSkillTap(btnBomb, () => useBomb());
 
-    attachSkillTap(btnMelee, () => {
-      if (!gameOver) useMelee();
-    });
-    attachSkillTap(btnBomb, () => {
-      if (!gameOver) useBomb();
-    });
+    // ===== 게임 로직 =====
 
-    // ======== 게임 로직 ========
+    function selectCat(id) {
+      selectedCatType = id;
+      selectedCat = CAT_TYPES[id];
+      hasSelectedCat = true;
+
+      player.speed = selectedCat.speed;
+      // 초기화 & 시작
+      restartGameInternal(false); // 내부 리셋 (엔딩 텍스트 없이)
+    }
 
     function shoot() {
+      if (!selectedCat) return;
       const count = 1 + powerLevel;
       const spread = 8;
       const mid = (count - 1) / 2;
+      const bulletSpeed = selectedCat.bulletSpeed;
+      const homingCount = selectedCat.homingCount;
+
+      // 파워 3단계에서만 유도탄 활성
+      let homingIndices = [];
+      if (powerLevel >= 3) {
+        const hc = Math.min(homingCount, count);
+        const start = Math.round(mid - (hc - 1) / 2);
+        for (let k = 0; k < hc; k++) homingIndices.push(start + k);
+      }
 
       for (let i = 0; i < count; i++) {
         const offset = (i - mid) * spread;
-        const isHoming = (powerLevel >= 3 && i === Math.round(mid));
+        const isHoming = homingIndices.includes(i);
 
         bullets.push({
           x: player.x + offset,
           y: player.y - player.height / 2,
           width: 6,
           height: 12,
-          speed: 9,
+          speed: bulletSpeed,
           color: isHoming ? "#80d8ff" : "#ffeb3b",
           homing: isHoming,
           target: null,
           vx: 0,
-          vy: -9,
+          vy: -bulletSpeed,
         });
       }
     }
@@ -478,7 +566,7 @@
       showEndText();
     }
 
-    function restartGame() {
+    function restartGameInternal(resetCatToo) {
       bullets = [];
       enemies = [];
       enemyBullets = [];
@@ -500,6 +588,17 @@
       gameOverText.style.display = "none";
       lastTime = performance.now();
       meleeActive = false;
+
+      if (resetCatToo) {
+        hasSelectedCat = false;
+        selectedCat = null;
+        selectedCatType = null;
+      }
+    }
+
+    function restartGame() {
+      // 고양이는 유지한 채 다시 시작
+      restartGameInternal(false);
     }
 
     function rectsCollide(a, b) {
@@ -534,6 +633,7 @@
     }
 
     function useBomb() {
+      if (!hasSelectedCat) return;
       const now = performance.now();
       if (now - lastBombTime < BOMB_COOLDOWN) return;
       lastBombTime = now;
@@ -556,6 +656,7 @@
     }
 
     function useMelee() {
+      if (!hasSelectedCat) return;
       const now = performance.now();
       if (now - lastMeleeTime < MELEE_COOLDOWN) return;
       lastMeleeTime = now;
@@ -563,14 +664,11 @@
       meleeEndTime = now + MELEE_DURATION;
     }
 
-    // 보스 패턴별 탄막
     function bossShootPattern() {
       if (!boss || boss.dead) return;
-
       const shotsBaseY = boss.y + boss.height / 2;
 
       if (boss.pattern === 0) {
-        // 부채꼴 + 구멍
         const shots = 18;
         const baseAngle = Math.PI / 2;
         const spread = 0.9;
@@ -593,7 +691,6 @@
           });
         }
       } else if (boss.pattern === 1) {
-        // 커튼 패턴
         const columns = 12;
         const margin = 40;
         const step = (WIDTH - margin * 2) / (columns - 1);
@@ -616,7 +713,6 @@
           });
         }
       } else if (boss.pattern === 2) {
-        // 조준 3-way 연사
         const burstCount = 3;
         for (let b = 0; b < burstCount; b++) {
           const dx = player.x - boss.x;
@@ -643,9 +739,9 @@
     }
 
     function update(delta) {
-      if (gameOver) return;
-      totalElapsed += delta;
+      if (gameOver || !hasSelectedCat) return;
       const now = performance.now();
+      totalElapsed += delta;
 
       if (meleeActive && now > meleeEndTime) {
         meleeActive = false;
@@ -672,7 +768,6 @@
         }
       }
 
-      // 내 미사일
       bullets.forEach((b) => {
         if (b.homing) {
           if (!b.target) {
@@ -701,7 +796,6 @@
           !b.dead
       );
 
-      // 적 스폰
       lastEnemySpawn += delta;
       if (lastEnemySpawn > enemySpawnInterval) {
         spawnEnemy();
@@ -709,7 +803,6 @@
         enemySpawnInterval = Math.max(350, enemySpawnInterval - 2);
       }
 
-      // 적 이동 + 공격
       enemies.forEach((e) => {
         if (e.pattern === 0) {
           e.y += e.speed;
@@ -780,7 +873,6 @@
 
       enemies = enemies.filter((e) => !e.dead);
 
-      // 보스
       if (boss) {
         boss.x += boss.speedX;
         if (boss.x - boss.width / 2 < 0 || boss.x + boss.width / 2 > WIDTH) {
@@ -799,13 +891,11 @@
         }
       }
 
-      // 적 미사일 이동
       enemyBullets.forEach((b) => {
         b.x += b.vx;
         b.y += b.vy;
       });
 
-      // 근접공격 영역 처리 (전방 미사일 제거)
       if (meleeActive) {
         const rangeX = 140;
         const rangeY = 160;
@@ -830,13 +920,11 @@
           !b.dead
       );
 
-      // 파워업 이동
       powerUps.forEach((p) => {
         p.y += p.speed;
       });
       powerUps = powerUps.filter((p) => p.y < HEIGHT + 30 && !p.dead);
 
-      // 내 미사일 → 적/보스 충돌
       bullets.forEach((b) => {
         enemies.forEach((e) => {
           if (!b.dead && !e.dead && rectsCollide(b, e)) {
@@ -878,7 +966,6 @@
       bullets = bullets.filter((b) => !b.dead);
       enemies = enemies.filter((e) => !e.dead);
 
-      // 플레이어 피격
       enemyBullets.forEach((b) => {
         if (!b.dead && rectsCollide(player, b)) {
           b.dead = true;
@@ -895,7 +982,6 @@
       });
       enemies = enemies.filter((e) => !e.dead);
 
-      // 파워업 획득
       powerUps.forEach((p) => {
         const dx = p.x - player.x;
         const dy = p.y - player.y;
@@ -910,28 +996,23 @@
       powerUps = powerUps.filter((p) => !p.dead);
     }
 
-    // 🐱 고양이 그리기
-    function drawPlayer() {
-      const w = player.width;
-      const h = player.height;
-      const cx = player.x;
-      const cy = player.y;
+    // 고양이 그리기 (색만 타입에 따라 다르게)
+    function drawCatBody(cx, cy, w, h, cat) {
+      const fur = cat ? cat.furColor : "#ffcc80";
+      const earIn = cat ? cat.earInner : "#ff8a80";
 
       ctx.save();
       ctx.translate(cx, cy);
 
-      // 몸통
-      ctx.fillStyle = "#ffcc80";
+      ctx.fillStyle = fur;
       ctx.beginPath();
       ctx.ellipse(0, h * 0.15, w * 0.35, h * 0.4, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 머리
       ctx.beginPath();
       ctx.arc(0, -h * 0.15, w * 0.3, 0, Math.PI * 2);
       ctx.fill();
 
-      // 귀
       ctx.beginPath();
       ctx.moveTo(-w * 0.2, -h * 0.45);
       ctx.lineTo(-w * 0.05, -h * 0.25);
@@ -946,8 +1027,7 @@
       ctx.closePath();
       ctx.fill();
 
-      // 귀 안쪽
-      ctx.fillStyle = "#ff8a80";
+      ctx.fillStyle = earIn;
       ctx.beginPath();
       ctx.moveTo(-w * 0.19, -h * 0.4);
       ctx.lineTo(-w * 0.08, -h * 0.27);
@@ -962,21 +1042,18 @@
       ctx.closePath();
       ctx.fill();
 
-      // 눈
       ctx.fillStyle = "#000";
       ctx.beginPath();
       ctx.arc(-w * 0.12, -h * 0.16, w * 0.04, 0, Math.PI * 2);
       ctx.arc(w * 0.12, -h * 0.16, w * 0.04, 0, Math.PI * 2);
       ctx.fill();
 
-      // 눈 하이라이트
       ctx.fillStyle = "#fff";
       ctx.beginPath();
       ctx.arc(-w * 0.13, -h * 0.17, w * 0.015, 0, Math.PI * 2);
       ctx.arc(w * 0.11, -h * 0.17, w * 0.015, 0, Math.PI * 2);
       ctx.fill();
 
-      // 코
       ctx.fillStyle = "#d81b60";
       ctx.beginPath();
       ctx.moveTo(0, -h * 0.1);
@@ -985,7 +1062,6 @@
       ctx.closePath();
       ctx.fill();
 
-      // 입
       ctx.strokeStyle = "#d81b60";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -997,7 +1073,6 @@
       ctx.quadraticCurveTo(w * 0.03, -h * 0.03, w * 0.06, -h * 0.02);
       ctx.stroke();
 
-      // 수염
       ctx.strokeStyle = "#000";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -1005,22 +1080,19 @@
       ctx.lineTo(-w * 0.18, -h * 0.11);
       ctx.moveTo(-w * 0.06, -h * 0.095);
       ctx.lineTo(-w * 0.18, -h * 0.075);
-
       ctx.moveTo(w * 0.06, -h * 0.11);
       ctx.lineTo(w * 0.18, -h * 0.11);
       ctx.moveTo(w * 0.06, -h * 0.095);
       ctx.lineTo(w * 0.18, -h * 0.075);
       ctx.stroke();
 
-      // 앞발
-      ctx.fillStyle = "#ffcc80";
+      ctx.fillStyle = fur;
       ctx.beginPath();
       ctx.ellipse(-w * 0.13, h * 0.4, w * 0.07, h * 0.1, 0, 0, Math.PI * 2);
       ctx.ellipse(w * 0.13, h * 0.4, w * 0.07, h * 0.1, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // 꼬리
-      ctx.strokeStyle = "#ffcc80";
+      ctx.strokeStyle = fur;
       ctx.lineWidth = 6;
       ctx.lineCap = "round";
       ctx.beginPath();
@@ -1029,6 +1101,11 @@
       ctx.stroke();
 
       ctx.restore();
+    }
+
+    function drawPlayer() {
+      if (!hasSelectedCat || !selectedCat) return;
+      drawCatBody(player.x, player.y, player.width, player.height, selectedCat);
     }
 
     function drawMelee() {
@@ -1157,6 +1234,59 @@
       ctx.restore();
     }
 
+    // 오프닝 화면
+    function drawOpeningScreen() {
+      ctx.save();
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+      const title = "모바일냥코대전!";
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 48px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(title, WIDTH / 2, HEIGHT * 0.18);
+
+      ctx.font = "18px system-ui";
+      ctx.fillStyle = "#ddd";
+      ctx.fillText("고양이를 터치해서 선택하세요", WIDTH / 2, HEIGHT * 0.25);
+
+      catOptions.forEach((opt) => {
+        const cat = CAT_TYPES[opt.id];
+        const x = opt.x;
+        const y = opt.y;
+        const w = opt.w;
+        const h = opt.h;
+
+        // 카드 배경
+        ctx.fillStyle = "rgba(255,255,255,0.06)";
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(x - w/2, y - h/2, w, h, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        // 고양이 그림
+        drawCatBody(x, y - 40, 40, 46, cat);
+
+        // 이름
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 20px system-ui";
+        ctx.fillText(cat.name, x, y + 40);
+
+        // 설명 (두 줄 정도)
+        ctx.fillStyle = "#ccc";
+        ctx.font = "12px system-ui";
+        const lines = cat.desc.split(" ");
+        // 간단히 두 줄로 나눔
+        ctx.fillText(lines[0], x, y + 65);
+        ctx.fillText(lines.slice(1).join(" "), x, y + 83);
+      });
+
+      ctx.restore();
+    }
+
     function gameLoop(t) {
       if (!lastTime) lastTime = t;
       const dt = t - lastTime;
@@ -1164,14 +1294,18 @@
 
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-      update(dt);
-      drawPlayer();
-      drawMelee();
-      drawBullets();
-      drawEnemies();
-      drawEnemyBullets();
-      drawPowerUps();
-      drawBoss();
+      if (!hasSelectedCat) {
+        drawOpeningScreen();
+      } else {
+        update(dt);
+        drawPlayer();
+        drawMelee();
+        drawBullets();
+        drawEnemies();
+        drawEnemyBullets();
+        drawPowerUps();
+        drawBoss();
+      }
 
       requestAnimationFrame(gameLoop);
     }
