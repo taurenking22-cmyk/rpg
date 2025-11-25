@@ -4,150 +4,163 @@
   <meta charset="UTF-8" />
   <title>모바일냥코대전!</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #111;
-      font-family: system-ui, sans-serif;
-      color: #fff;
-      touch-action: none;
-      -webkit-user-select: none;
-      user-select: none;
-      overflow: hidden;
-    }
-    #gameContainer {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-    }
-    #gameCanvas {
-      background: #000;
-      border: 2px solid #555;
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-    #ui {
-      position: absolute;
-      top: 8px;
-      left: 8px;
-      font-size: 14px;
-      text-shadow: 0 0 4px #000;
-      pointer-events: none;
-    }
-    #gameOverText {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 28px;
-      text-align: center;
-      display: none;
-      text-shadow: 0 0 8px #000;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.6);
-      border-radius: 8px;
-    }
-    #bossHpBar {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      width: 150px;
-      height: 10px;
-      border: 1px solid #fff;
-      display: none;
-      background: rgba(0,0,0,0.4);
-    }
-    #bossHpInner {
-      width: 100%;
-      height: 100%;
-      background: red;
-    }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #111;
+    font-family: system-ui, sans-serif;
+    color: #fff;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+  }
+  #gameContainer {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+  }
+  #gameCanvas {
+    background: #000;
+    border: 2px solid #555;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #ui {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    font-size: 14px;
+    text-shadow: 0 0 4px #000;
+    pointer-events: none;
+  }
+  #gameOverText {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 28px;
+    text-align: center;
+    display: none;
+    text-shadow: 0 0 8px #000;
+    padding: 8px 12px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 8px;
+  }
+  #bossHpBar {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 150px;
+    height: 10px;
+    border: 1px solid #fff;
+    display: none;
+    background: rgba(0,0,0,0.4);
+  }
+  #bossHpInner {
+    width: 100%;
+    height: 100%;
+    background: red;
+  }
 
-    /* 모바일 터치 컨트롤 */
-    #mobileControls {
-      position: absolute;
-      bottom: 8px;
-      left: 0;
-      width: 100%;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0 8px;
-      box-sizing: border-box;
-      pointer-events: none;
-    }
+  /* 🔥 모바일 터치 컨트롤 전체 영역 */
+  #mobileControls {
+    position: absolute;
+    bottom: 18px;
+    left: 0;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 0 18px;
+    box-sizing: border-box;
+    pointer-events: none; /* 안쪽 요소만 터치 */
+  }
 
+  /* 🔥 조이스틱 크게 (대략 가로·세로 5배쯤 체감) */
+  #joystickContainer {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joystickBase {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 220px;
+    height: 220px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 3px solid rgba(255,255,255,0.5);
+    background: rgba(255,255,255,0.07);
+    box-shadow: 0 0 16px rgba(0,0,0,0.8);
+  }
+  #joystickStick {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 120px;
+    height: 120px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: rgba(255,255,255,0.5);
+    box-shadow: 0 0 18px rgba(0,0,0,0.9);
+  }
+
+  /* 🔥 공격 버튼도 왕크게 + 손가락에 여유 있는 간격 */
+  #buttonContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    align-items: flex-end;
+    pointer-events: auto;
+    margin-right: 4px;
+    margin-bottom: 12px;
+  }
+  .actionButton {
+    min-width: 160px;
+    padding: 20px 26px;
+    font-size: 18px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255,255,255,0.2);
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 0 4px #000;
+    box-shadow: 0 0 14px rgba(0,0,0,0.85);
+  }
+  .actionButton:active {
+    transform: scale(0.95);
+    background: rgba(255,255,255,0.3);
+  }
+
+  /* PC 같은 큰 화면에서는 너무 거대해지지 않게 조금 축소 */
+  @media (min-width: 900px) {
     #joystickContainer {
-      position: relative;
-      width: 140px;
-      height: 140px;
-      pointer-events: auto;
-      touch-action: none;
+      width: 200px;
+      height: 200px;
     }
     #joystickBase {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 120px;
-      height: 120px;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.4);
-      background: rgba(255,255,255,0.05);
+      width: 170px;
+      height: 170px;
     }
     #joystickStick {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 60px;
-      height: 60px;
-      transform: translate(-50%, -50%);
-      border-radius: 50%;
-      background: rgba(255,255,255,0.35);
-    }
-
-    #buttonContainer {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      align-items: flex-end;
-      pointer-events: auto;
+      width: 90px;
+      height: 90px;
     }
     .actionButton {
-      min-width: 80px;
-      padding: 10px 14px;
-      font-size: 13px;
-      border-radius: 20px;
-      border: none;
-      background: rgba(255,255,255,0.15);
-      color: #fff;
-      font-weight: 600;
-      text-shadow: 0 0 4px #000;
-      box-shadow: 0 0 8px rgba(0,0,0,0.7);
+      min-width: 140px;
+      padding: 16px 22px;
+      font-size: 16px;
     }
-    .actionButton:active {
-      transform: scale(0.95);
-      background: rgba(255,255,255,0.25);
-    }
+  }
+</style>
 
-    @media (min-width: 900px) {
-      #joystickContainer {
-        width: 120px;
-        height: 120px;
-      }
-      #joystickBase {
-        width: 100px;
-        height: 100px;
-      }
-      #joystickStick {
-        width: 50px;
-        height: 50px;
-      }
-    }
-  </style>
 </head>
 <body>
   <div id="gameContainer">
@@ -1314,3 +1327,4 @@
   </script>
 </body>
 </html>
+
