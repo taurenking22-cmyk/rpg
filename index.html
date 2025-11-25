@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>모바일냥코대전!</title>
   <style>
-/* 화면 전체 공통 */
 html, body {
   margin: 0;
   padding: 0;
@@ -13,126 +12,83 @@ html, body {
   background: #111;
   font-family: system-ui, sans-serif;
   color: #fff;
-  touch-action: none;
-  -webkit-user-select: none;
-  user-select: none;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   overflow: hidden;
 }
 
-/* 게임 컨테이너 */
+/* 게임 화면을 가운데 정렬 + 고정 크기 */
 #gameContainer {
   position: relative;
-  width: 100vw;
-  height: 100vh;
+  width: 720px;   /* 원래 PC 기준 */
+  height: 850px;
+  transform-origin: top left;
 }
 
-/* 캔버스 */
+/* 캔버스는 고정 크기 */
 #gameCanvas {
   background: #000;
+  border: 2px solid #555;
+  width: 720px;
+  height: 850px;
   display: block;
-  width: 100%;
-  height: 100%;
-  touch-action: none;
 }
 
-/* ===== 초대형 모바일 UI ===== */
+/* UI */
+#ui {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 14px;
+  text-shadow: 0 0 4px #000;
+  pointer-events: none;
+}
+
+#gameOverText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 28px;
+  text-align: center;
+  display: none;
+  text-shadow: 0 0 8px #000;
+  padding: 8px 12px;
+  background: rgba(0,0,0,0.6);
+  border-radius: 8px;
+}
+
+#bossHpBar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 150px;
+  height: 10px;
+  border: 1px solid #fff;
+  display: none;
+}
+
+#bossHpInner {
+  width: 100%;
+  height: 100%;
+  background: red;
+}
+
+/* ===== 모바일 터치 컨트롤 ===== */
 #mobileControls {
   position: absolute;
-  bottom: 24px;
+  bottom: 12px;
   left: 0;
   width: 100%;
   display: flex;
   justify-content: space-between;
-  align-items: flex-end;
-  padding: 0 24px;
-  box-sizing: border-box;
+  padding: 0 12px;
   pointer-events: none;
 }
 
-/* 🔥 조이스틱: 기존 대비 약 3.5배로 확대 */
-#joystickContainer {
-  position: relative;
-  width: 380px;   /* 원래 140px → 380px */
-  height: 380px;  /* 원래 140px → 380px */
-  pointer-events: auto;
-  touch-action: none;
-}
+/* 적당히 보기 편한 크기(PC에도 과하지 않게)*
 
-#joystickBase {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 330px;   /* 원래 120px → 330px */
-  height: 330px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 5px solid rgba(255,255,255,0.6);
-  background: rgba(255,255,255,0.1);
-  box-shadow: 0 0 30px rgba(0,0,0,0.9);
-}
-
-#joystickStick {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 180px;  /* 원래 60px → 180px */
-  height: 180px;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: rgba(255,255,255,0.65);
-  box-shadow: 0 0 40px rgba(0,0,0,1);
-}
-
-/* 공격 버튼 영역 */
-#buttonContainer {
-  display: flex;
-  flex-direction: column;
-  gap: 26px;   /* 버튼 간격 확장 */
-  align-items: flex-end;
-  pointer-events: auto;
-  margin-right: 12px;
-  margin-bottom: 20px;
-}
-
-/* 🔥 공격 버튼: 기존보다 약 3배~4배 키움 */
-.actionButton {
-  min-width: 260px;       /* 원래 80px → 260px */
-  padding: 32px 45px;     /* 원래 10px → 32px */
-  font-size: 32px;        /* 원래 13px → 32px */
-  border-radius: 999px;
-  border: none;
-  background: rgba(255,255,255,0.25);
-  color: #fff;
-  font-weight: 800;
-  text-shadow: 0 0 6px #000;
-  box-shadow: 0 0 24px rgba(0,0,0,0.9);
-}
-
-.actionButton:active {
-  transform: scale(0.92);
-  background: rgba(255,255,255,0.35);
-}
-
-/* PC 화면에서 너무 커지지 않도록 */
-@media (min-width: 900px) {
-  #joystickContainer {
-    width: 260px;
-    height: 260px;
-  }
-  #joystickBase {
-    width: 220px;
-    height: 220px;
-  }
-  #joystickStick {
-    width: 130px;
-    height: 130px;
-  }
-  .actionButton {
-    min-width: 180px;
-    padding: 22px 32px;
-    font-size: 22px;
-  }
-}
 </style>
 </head>
 <body>
@@ -1300,6 +1256,7 @@ html, body {
   </script>
 </body>
 </html>
+
 
 
 
