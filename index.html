@@ -1,1588 +1,1178 @@
 <!DOCTYPE html>
 <html lang="ko">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <head>
-  
-  <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>탑뷰 RPG - 직업 선택 & 모바일 지원</title>
+  <meta charset="UTF-8" />
+  <title>슈팅게임 - 모바일 터치 지원 버전</title>
   <style>
     body {
       margin: 0;
-      background: #222;
+      background: #111;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      color: #fff;
       font-family: system-ui, sans-serif;
-      overflow: hidden;
+      color: #fff;
+      touch-action: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
-    #gameWrapper {
-      text-align: center;
+    #gameContainer {
       position: relative;
+      max-width: 720px;
+      width: 100vw;
     }
-    canvas {
-      background: #333;
-      border: 3px solid #555;
-      image-rendering: pixelated;
+    #gameCanvas {
+      background: #000;
+      border: 2px solid #555;
+      display: block;
+      width: 100%;
+      height: auto;
     }
-    #info {
-      margin-top: 8px;
+    #ui {
+      position: absolute;
+      top: 8px;
+      left: 8px;
       font-size: 14px;
+      text-shadow: 0 0 4px #000;
+      pointer-events: none;
     }
-
-    /* 직업 선택 오버레이 */
-    #jobSelectOverlay {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at center, rgba(40,40,40,0.95), rgba(0,0,0,0.98));
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 10;
-      color: #fff;
-      font-family: system-ui, sans-serif;
-    }
-
-    .job-panel {
+    #gameOverText {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
       text-align: center;
-      max-width: 800px;
-      padding: 24px;
-      background: rgba(20,20,20,0.9);
-      border-radius: 16px;
-      box-shadow: 0 0 30px rgba(0,0,0,0.8);
+      display: none;
+      text-shadow: 0 0 8px #000;
+      padding: 8px 12px;
+      background: rgba(0,0,0,0.6);
+      border-radius: 8px;
+    }
+    #bossHpBar {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 150px;
+      height: 10px;
+      border: 1px solid #fff;
+      display: none;
+      background: rgba(0,0,0,0.4);
+    }
+    #bossHpInner {
+      width: 100%;
+      height: 100%;
+      background: red;
     }
 
-    .job-panel h1 {
-      margin-top: 0;
-      margin-bottom: 8px;
-    }
-
-    .job-cards {
-      display: flex;
-      gap: 16px;
-      margin-top: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-
-    .job-card {
-      width: 180px;
-      padding: 16px;
-      background: #333;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s, border-color 0.15s;
-      border: 2px solid transparent;
-    }
-    .job-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 16px rgba(0,0,0,0.6);
-      background: #3b3b3b;
-      border-color: #00bcd4;
-    }
-    .job-icon {
-      font-size: 32px;
-      margin-bottom: 8px;
-    }
-    .warrior-icon { color: #ff7043; }
-    .mage-icon    { color: #64b5f6; }
-    .archer-icon  { color: #aed581; }
-
-    .job-card h2 {
-      margin: 4px 0;
-    }
-    .job-card p {
-      font-size: 13px;
-      color: #ddd;
-      margin: 4px 0 0 0;
-    }
-    .job-tip {
-      margin-top: 12px;
-      font-size: 13px;
-      color: #ccc;
-    }
-
-    /* 모바일 조작 UI */
+    /* 모바일 터치 컨트롤 */
     #mobileControls {
-      position: fixed;
-      inset: auto 0 8px 0;
+      position: absolute;
+      bottom: 8px;
+      left: 0;
+      width: 100%;
       display: flex;
       justify-content: space-between;
-      padding: 0 16px;
-      pointer-events: none;
-      z-index: 5;
+      align-items: center;
+      padding: 0 8px;
+      box-sizing: border-box;
+      pointer-events: none; /* 안쪽 요소만 터치 받도록 */
     }
 
-  
-
-    #mobileControls .dpad,
-    #mobileControls .actions {
+    #joystickContainer {
+      position: relative;
+      width: 140px;
+      height: 140px;
       pointer-events: auto;
+      touch-action: none;
+    }
+    #joystickBase {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 120px;
+      height: 120px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      background: rgba(255,255,255,0.05);
+    }
+    #joystickStick {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 60px;
+      height: 60px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: rgba(255,255,255,0.35);
     }
 
-    .dpad {
+    #buttonContainer {
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 4px;
+      gap: 10px;
+      align-items: flex-end;
+      pointer-events: auto;
     }
-    .dpad .row {
-      display: flex;
-      gap: 4px;
-    }
-
-    .btn-dir,
-    .btn-act {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
+    .actionButton {
+      min-width: 80px;
+      padding: 10px 14px;
+      font-size: 13px;
+      border-radius: 20px;
       border: none;
-      background: rgba(30,30,30,0.9);
+      background: rgba(255,255,255,0.15);
       color: #fff;
-      font-size: 18px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
-      touch-action: manipulation;
+      font-weight: 600;
+      text-shadow: 0 0 4px #000;
+      box-shadow: 0 0 8px rgba(0,0,0,0.7);
+    }
+    .actionButton:active {
+      transform: scale(0.95);
+      background: rgba(255,255,255,0.25);
     }
 
-    .btn-act {
-      margin-left: 6px;
-    }
-
-    .btn-dir:active,
-    .btn-act:active {
-      transform: scale(0.92);
-      background: rgba(80,80,80,0.9);
+    @media (min-width: 900px) {
+      /* PC에선 컨트롤 조금 작게 */
+      #joystickContainer {
+        width: 120px;
+        height: 120px;
+      }
+      #joystickBase {
+        width: 100px;
+        height: 100px;
+      }
+      #joystickStick {
+        width: 50px;
+        height: 50px;
+      }
     }
   </style>
 </head>
 <body>
-  <div id="gameWrapper">
-    <canvas id="game" width="960" height="600"></canvas>
-    <div id="info">
-      PC: 방향키 이동 | A: 공격 | X: 스킬1 | C: 스킬2 | S: 방어(홀드)<br>
-      모바일: 아래 버튼 터치로 플레이
-    </div>
-  </div>
+  <div id="gameContainer">
+    <canvas id="gameCanvas" width="720" height="850"></canvas>
 
-  <!-- 직업 선택 오버레이 -->
-  <div id="jobSelectOverlay">
-    <div class="job-panel">
-      <h1>직업을 선택하세요</h1>
-      <div class="job-cards">
-        <div class="job-card" data-job="warrior">
-          <div class="job-icon warrior-icon">🗡</div>
-          <h2>전사</h2>
-          <p>높은 체력과 방어력, 강력한 근접 공격</p>
-        </div>
-        <div class="job-card" data-job="mage">
-          <div class="job-icon mage-icon">🔥</div>
-          <h2>마법사</h2>
-          <p>마법탄과 강력한 마법 스킬</p>
-        </div>
-        <div class="job-card" data-job="archer">
-          <div class="job-icon archer-icon">🏹</div>
-          <h2>궁수</h2>
-          <p>빠른 원거리 공격과 기동성</p>
-        </div>
-      </div>
-      <div class="job-tip">PC는 키보드, 모바일은 아래 버튼으로 조작할 수 있습니다.</div>
+    <div id="ui">
+      점수: <span id="score">0</span><br />
+      목숨: <span id="lives">3</span><br />
+      파워: <span id="power">0</span> / 3<br />
+      필살기(Z): 3초 쿨타임<br />
+      근접(X): 짧은 쿨타임
     </div>
-  </div>
+    <div id="bossHpBar">
+      <div id="bossHpInner"></div>
+    </div>
+    <div id="gameOverText"></div>
 
-  <!-- 모바일 전용 조작 버튼 -->
-  <div id="mobileControls">
-    <div class="dpad">
-      <button class="btn-dir" data-dir="up">▲</button>
-      <div class="row">
-        <button class="btn-dir" data-dir="left">◀</button>
-        <button class="btn-dir" data-dir="down">▼</button>
-        <button class="btn-dir" data-dir="right">▶</button>
+    <!-- 🔥 모바일 터치 컨트롤 -->
+    <div id="mobileControls">
+      <div id="joystickContainer">
+        <div id="joystickBase"></div>
+        <div id="joystickStick"></div>
       </div>
-    </div>
-    <div class="actions">
-      <button class="btn-act" data-act="a">A</button>
-      <button class="btn-act" data-act="x">X</button>
-      <button class="btn-act" data-act="c">C</button>
-      <button class="btn-act" data-act="s">S</button>
+      <div id="buttonContainer">
+        <button class="actionButton" id="btnShoot">SHOT</button>
+        <button class="actionButton" id="btnMelee">MELEE</button>
+        <button class="actionButton" id="btnBomb">BOMB</button>
+      </div>
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById("game");
+    const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
 
-    // ===== 월드 / 카메라 =====
-    const WORLD_WIDTH = 2000;
-    const WORLD_HEIGHT = 2000;
+    const scoreEl = document.getElementById("score");
+    const livesEl = document.getElementById("lives");
+    const powerEl = document.getElementById("power");
+    const gameOverText = document.getElementById("gameOverText");
+    const bossHpBar = document.getElementById("bossHpBar");
+    const bossHpInner = document.getElementById("bossHpInner");
 
-    const camera = {
-      x: 0,
-      y: 0,
-      w: canvas.width,
-      h: canvas.height,
-    };
+    const joystickContainer = document.getElementById("joystickContainer");
+    const joystickBase = document.getElementById("joystickBase");
+    const joystickStick = document.getElementById("joystickStick");
+    const btnShoot = document.getElementById("btnShoot");
+    const btnMelee = document.getElementById("btnMelee");
+    const btnBomb = document.getElementById("btnBomb");
 
-    // ===== 입력 =====
-    const keys = {};
-    window.addEventListener("keydown", (e) => {
-      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) {
-        e.preventDefault();
-      }
-      keys[e.key] = true;
-    });
-    window.addEventListener("keyup", (e) => {
-      keys[e.key] = false;
-    });
+    const WIDTH = canvas.width;
+    const HEIGHT = canvas.height;
 
-    // 모바일 가상 키
-    const virtualKeys = {
-      ArrowUp: false,
-      ArrowDown: false,
-      ArrowLeft: false,
-      ArrowRight: false,
-      a: false,
-      x: false,
-      c: false,
-      s: false,
-    };
-
-    function setVirtualKey(key, pressed) {
-      virtualKeys[key] = pressed;
-    }
-
-    // 방향 버튼 이벤트
-    document.querySelectorAll(".btn-dir").forEach(btn => {
-      const dir = btn.getAttribute("data-dir");
-      const map = { up:"ArrowUp", down:"ArrowDown", left:"ArrowLeft", right:"ArrowRight" };
-      const key = map[dir];
-
-      const press = (e) => { e.preventDefault(); setVirtualKey(key, true); };
-      const release = (e) => { e.preventDefault(); setVirtualKey(key, false); };
-
-      btn.addEventListener("touchstart", press, { passive: false });
-      btn.addEventListener("touchend", release);
-      btn.addEventListener("touchcancel", release);
-      btn.addEventListener("mousedown", press);
-      btn.addEventListener("mouseup", release);
-      btn.addEventListener("mouseleave", release);
-    });
-
-    // 액션 버튼 이벤트
-    document.querySelectorAll(".btn-act").forEach(btn => {
-      const act = btn.getAttribute("data-act"); // a, x, c, s
-      const press = (e) => { e.preventDefault(); setVirtualKey(act, true); };
-      const release = (e) => { e.preventDefault(); setVirtualKey(act, false); };
-
-      btn.addEventListener("touchstart", press, { passive: false });
-      btn.addEventListener("touchend", release);
-      btn.addEventListener("touchcancel", release);
-      btn.addEventListener("mousedown", press);
-      btn.addEventListener("mouseup", release);
-      btn.addEventListener("mouseleave", release);
-    });
-
-    function isPressed(key) {
-      if (key.length === 1) {
-        return !!keys[key] || !!keys[key.toUpperCase()] || !!virtualKeys[key.toLowerCase()];
-      }
-      return !!keys[key] || !!virtualKeys[key];
-    }
-
-    // ===== 유틸 =====
-    function clamp(v, min, max) {
-      return Math.max(min, Math.min(max, v));
-    }
-    function rectsOverlap(a, b) {
-      return !(
-        a.x + a.w < b.x ||
-        a.x > b.x + b.w ||
-        a.y + a.h < b.y ||
-        a.y > b.y + b.h
-      );
-    }
-
-    // ===== 플레이어 =====
+    // 🐱 플레이어 (고양이)
     const player = {
-      x: WORLD_WIDTH / 2,
-      y: WORLD_HEIGHT / 2,
-      w: 32,
-      h: 32,
-      baseSpeed: 3,
-      speed: 3,
-      color: "#4caf50",
-      hp: 100,
-      maxHp: 100,
-      defense: 0,
-      dir: "down",
-
-      // 기본 공격 (전사용 근접)
-      isAttacking: false,
-      attackTime: 0,
-      attackDuration: 120,
-      lastAttackTime: 0,
-      attackCooldown: 250,
-      baseAttackDamage: 22,
-      attackDamage: 22,
-
-      // 레벨 / 경험치
-      level: 1,
-      xp: 0,
-      xpToNext: 100,
-      kills: 0,
-
-      // 스킬 게이지
-      skillGauge: 0,
-      skillGaugeMax: 100,
-      skillGaugeOnHit: 2.5,
-      skillGaugeOnKill: 10,
-
-      // 스킬 코스트/쿨
-      skillXCost: 40,
-      skillCCost: 60,
-      lastSkillXTime: 0,
-      lastSkillCTime: 0,
-      skillXCooldown: 1000,
-      skillCCooldown: 3000,
-
-      // 방어 스킬(S)
-      isGuarding: false,
-      guardDrainPerSec: 5, // 초당 소모 (1/3로 느리게)
-
-      // 직업별 스킬 함수(필요시 덮어씀)
-      performBasicAttack: null,
-      performSkillX: null,
-      performSkillC: null,
+      x: WIDTH / 2,
+      y: HEIGHT - 150,
+      width: 46,
+      height: 52,
+      speed: 6,
     };
 
-    let selectedJob = null;
+    let bullets = [];
+    let enemies = [];
+    let enemyBullets = [];
+    let powerUps = [];
+    let keys = {};
+    let score = 0;
+    let lives = 3;
+    let powerLevel = 0; // 0~3
+    let gameOver = false;
+    let lastEnemySpawn = 0;
+    let enemySpawnInterval = 900;
 
-    const JOB_STATS = {
-      warrior: {
-        color: "#4caf50",
-        hp: 130,
-        atk: 24,
-        def: 2,
-        spd: 3.0,
-        atkCooldown: 250,
-        xCost: 40,
-        cCost: 60,
-      },
-      mage: {
-        color: "#64b5f6",
-        hp: 85,
-        atk: 18,
-        def: 0,
-        spd: 2.8,
-        atkCooldown: 380,
-        xCost: 45,
-        cCost: 65,
-      },
-      archer: {
-        color: "#aed581",
-        hp: 95,
-        atk: 20,
-        def: 1,
-        spd: 3.5,
-        atkCooldown: 160,
-        xCost: 40,
-        cCost: 55,
-      },
-    };
+    let lastTime = 0;
+    let totalElapsed = 0;
 
-    function applyJobStats(jobKey) {
-      const s = JOB_STATS[jobKey];
-      player.color = s.color;
-      player.maxHp = s.hp;
-      player.hp = s.hp;
-      player.attackDamage = s.atk;
-      player.defense = s.def;
-      player.speed = s.spd;
-      player.attackCooldown = s.atkCooldown;
-      player.skillXCost = s.xCost;
-      player.skillCCost = s.cCost;
+    let boss = null;
+    const BOSS_SPAWN_TIME = 60000; // 60초 후 보스 등장
+    const BOSS_PATTERN_CHANGE_TIME = 4000;
 
-      // 직업별 스킬 설정
-      if (jobKey === "warrior") {
-        player.performBasicAttack = warriorBasicAttack;
-        player.performSkillX = warriorSkillX;
-        player.performSkillC = warriorSkillC;
-      } else if (jobKey === "mage") {
-        player.performBasicAttack = mageBasicAttack;
-        player.performSkillX = mageSkillX;
-        player.performSkillC = mageSkillC;
-      } else if (jobKey === "archer") {
-        player.performBasicAttack = archerBasicAttack;
-        player.performSkillX = archerSkillX;
-        player.performSkillC = archerSkillC;
+    let lastBombTime = 0;
+    const BOMB_COOLDOWN = 3000;
+
+    let meleeActive = false;
+    let meleeEndTime = 0;
+    let lastMeleeTime = 0;
+    const MELEE_DURATION = 150;
+    const MELEE_COOLDOWN = 400;
+
+    let isVictory = false;
+
+    // ======== 키보드 입력 ========
+    window.addEventListener("keydown", (e) => {
+      keys[e.code] = true;
+
+      if (gameOver && e.code === "Space") {
+        restartGame();
       }
-    }
 
-    document.querySelectorAll(".job-card").forEach(card => {
-      card.addEventListener("click", () => {
-        const job = card.getAttribute("data-job");
-        selectedJob = job;
-        applyJobStats(job);
-        document.getElementById("jobSelectOverlay").style.display = "none";
-      });
+      if (!gameOver && e.code === "KeyZ") {
+        useBomb();
+      }
+      if (!gameOver && e.code === "KeyX") {
+        useMelee();
+      }
     });
 
-    function addSkillGauge(amount) {
-      player.skillGauge = clamp(
-        player.skillGauge + amount,
-        0,
-        player.skillGaugeMax
-      );
-    }
+    window.addEventListener("keyup", (e) => {
+      keys[e.code] = false;
+    });
 
-    function gainXP(amount) {
-      player.xp += amount;
-      while (player.xp >= player.xpToNext) {
-        player.xp -= player.xpToNext;
-        levelUp();
-      }
-    }
+    // 게임오버 시 모바일에서 재시작: 캔버스 탭
+    canvas.addEventListener("click", () => {
+      if (gameOver) restartGame();
+    });
 
-    function levelUp() {
-      player.level += 1;
-      player.maxHp += 20;
-      player.attackDamage += 5;
-      player.defense += 1;
-      player.hp = player.maxHp;
-      player.xpToNext = Math.floor(player.xpToNext * 1.5);
-    }
-
-    function damagePlayer(rawDmg) {
-      if (player.isGuarding) return;
-      const actual = Math.max(1, rawDmg - player.defense);
-      player.hp -= actual;
-      if (player.hp < 0) player.hp = 0;
-    }
-
-    // ===== 몬스터 타입 =====
-    const MONSTER_TYPES = {
-      melee: {
-        name: "Melee",
-        color: "#e53935",
-        baseHp: 40,
-        baseDamage: 8,
-        speed: 1.6,
-        aggroRange: 260,
-        attackRange: 40,
-        hitCooldown: 600,
-        xpReward: 40,
-      },
-      ranged: {
-        name: "Ranged",
-        color: "#ffeb3b",
-        baseHp: 30,
-        baseDamage: 10,
-        speed: 1.2,
-        aggroRange: 320,
-        attackRange: 220,
-        hitCooldown: 900,
-        xpReward: 50,
-      },
-      tank: {
-        name: "Tank",
-        color: "#795548",
-        baseHp: 100,
-        baseDamage: 15,
-        speed: 0.9,
-        aggroRange: 240,
-        attackRange: 45,
-        hitCooldown: 900,
-        xpReward: 70,
-      },
-      fast: {
-        name: "Fast",
-        color: "#00bcd4",
-        baseHp: 25,
-        baseDamage: 7,
-        speed: 2.7,
-        aggroRange: 220,
-        attackRange: 35,
-        hitCooldown: 450,
-        xpReward: 45,
-      },
-      bomber: {
-        name: "Bomber",
-        color: "#9c27b0",
-        baseHp: 60,
-        baseDamage: 18,
-        speed: 1.1,
-        aggroRange: 260,
-        attackRange: 70,
-        hitCooldown: 1200,
-        xpReward: 70,
-      },
-      dragon: {
-        name: "Dragon",
-        color: "#ff5722",
-        baseHp: 2000,
-        baseDamage: 50,
-        speed: 1.4,
-        aggroRange: 500,
-        attackRange: 400,
-        hitCooldown: 900,
-        xpReward: 3000,
-      }
+    // ======== 모바일 조이스틱 입력 ========
+    const joystickState = {
+      active: false,
+      centerX: 0,
+      centerY: 0,
     };
 
-    // ===== 스테이지 =====
-    const STAGE_ROWS = 3;
-    const STAGE_COLS = 3;
-    const NUM_STAGES = STAGE_ROWS * STAGE_COLS;
+    function updateDirFromJoystick(dx, dy) {
+      const dead = 10;
+      // 초기화
+      keys["ArrowLeft"] = false;
+      keys["ArrowRight"] = false;
+      keys["ArrowUp"] = false;
+      keys["ArrowDown"] = false;
 
-    const stages = [];
-    for (let i = 0; i < NUM_STAGES; i++) {
-      stages.push({
-        id: i,
-        difficulty: i + 1,
-        enemies: [],
-        initialized: false,
+      const dist = Math.hypot(dx, dy);
+      if (dist < dead) return;
+
+      if (dx < -dead) keys["ArrowLeft"] = true;
+      if (dx > dead) keys["ArrowRight"] = true;
+      if (dy < -dead) keys["ArrowUp"] = true;
+      if (dy > dead) keys["ArrowDown"] = true;
+    }
+
+    function resetJoystickStickPosition() {
+      joystickStick.style.left = "50%";
+      joystickStick.style.top = "50%";
+      joystickStick.style.transform = "translate(-50%, -50%)";
+    }
+
+    function handleJoystickTouchStart(e) {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const rect = joystickBase.getBoundingClientRect();
+      joystickState.centerX = rect.left + rect.width / 2;
+      joystickState.centerY = rect.top + rect.height / 2;
+      joystickState.active = true;
+      handleJoystickTouchMove(e);
+    }
+
+    function handleJoystickTouchMove(e) {
+      if (!joystickState.active) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      const dx = touch.clientX - joystickState.centerX;
+      const dy = touch.clientY - joystickState.centerY;
+
+      const maxRadius = 50;
+      let dist = Math.hypot(dx, dy);
+      let ndx = dx;
+      let ndy = dy;
+      if (dist > maxRadius) {
+        ndx = (dx / dist) * maxRadius;
+        ndy = (dy / dist) * maxRadius;
+      }
+
+      joystickStick.style.left = 50 + (ndx / maxRadius) * 50 + "%";
+      joystickStick.style.top = 50 + (ndy / maxRadius) * 50 + "%";
+      joystickStick.style.transform = "translate(-50%, -50%)";
+
+      updateDirFromJoystick(dx, dy);
+    }
+
+    function handleJoystickTouchEnd(e) {
+      e.preventDefault();
+      joystickState.active = false;
+      resetJoystickStickPosition();
+      updateDirFromJoystick(0, 0);
+    }
+
+    joystickContainer.addEventListener("touchstart", handleJoystickTouchStart, { passive: false });
+    joystickContainer.addEventListener("touchmove", handleJoystickTouchMove, { passive: false });
+    joystickContainer.addEventListener("touchend", handleJoystickTouchEnd, { passive: false });
+    joystickContainer.addEventListener("touchcancel", handleJoystickTouchEnd, { passive: false });
+
+    resetJoystickStickPosition();
+
+    // ======== 모바일 버튼 입력 ========
+    function attachButtonHold(button, keyCode) {
+      const down = (e) => {
+        e.preventDefault();
+        keys[keyCode] = true;
+      };
+      const up = (e) => {
+        e.preventDefault();
+        keys[keyCode] = false;
+      };
+      button.addEventListener("touchstart", down, { passive: false });
+      button.addEventListener("touchend", up, { passive: false });
+      button.addEventListener("touchcancel", up, { passive: false });
+      // PC에서 마우스로 눌러도 작동하게
+      button.addEventListener("mousedown", down);
+      window.addEventListener("mouseup", up);
+    }
+
+    // SHOT 버튼은 Space키처럼 동작 (연사)
+    attachButtonHold(btnShoot, "Space");
+
+    // MELEE / BOMB 은 "한 번" 사용하는 스킬 → 탭으로 발동
+    function attachSkillTap(button, skillFn) {
+      button.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        skillFn();
+      }, { passive: false });
+      button.addEventListener("click", (e) => {
+        e.preventDefault();
+        skillFn();
       });
     }
 
-    let currentStageIndex = 4; // 가운데
-    let enemies = stages[currentStageIndex].enemies;
+    attachSkillTap(btnMelee, () => {
+      if (!gameOver) useMelee();
+    });
+    attachSkillTap(btnBomb, () => {
+      if (!gameOver) useBomb();
+    });
 
-    // ===== 포탈 =====
-    let lastStageChangeTime = 0;
-    const STAGE_CHANGE_COOLDOWN = 800;
+    // ======== 게임 로직 ========
 
-    function getStagePos(index) {
-      return {
-        x: index % STAGE_COLS,
-        y: Math.floor(index / STAGE_COLS),
-      };
-    }
-    function getNeighborStage(index, dir) {
-      const { x, y } = getStagePos(index);
-      if (dir === "north" && y > 0) return (y - 1) * STAGE_COLS + x;
-      if (dir === "south" && y < STAGE_ROWS - 1) return (y + 1) * STAGE_COLS + x;
-      if (dir === "west" && x > 0) return y * STAGE_COLS + (x - 1);
-      if (dir === "east" && x < STAGE_COLS - 1) return y * STAGE_COLS + (x + 1);
-      return null;
-    }
+    function shoot() {
+      const count = 1 + powerLevel;
+      const spread = 8;
+      const mid = (count - 1) / 2;
 
-    function goToStage(newIndex, fromDir) {
-      const now = performance.now();
-      if (now - lastStageChangeTime < STAGE_CHANGE_COOLDOWN) return;
-      lastStageChangeTime = now;
+      for (let i = 0; i < count; i++) {
+        const offset = (i - mid) * spread;
+        const isHoming = (powerLevel >= 3 && i === Math.round(mid));
 
-      const stage = stages[newIndex];
-      if (!stage.initialized) {
-        populateStage(stage);
-      }
-      currentStageIndex = newIndex;
-      enemies = stages[currentStageIndex].enemies;
-      enemyProjectiles.length = 0;
-      skillWaves.length = 0;
-      items.length = 0;
-      playerProjectiles.length = 0;
-
-      if (fromDir === "north") {
-        player.y = WORLD_HEIGHT - player.h - 80;
-        player.x = WORLD_WIDTH / 2 - player.w / 2;
-      } else if (fromDir === "south") {
-        player.y = 80;
-        player.x = WORLD_WIDTH / 2 - player.w / 2;
-      } else if (fromDir === "west") {
-        player.x = WORLD_WIDTH - player.w - 80;
-        player.y = WORLD_HEIGHT / 2 - player.h / 2;
-      } else if (fromDir === "east") {
-        player.x = 80;
-        player.y = WORLD_HEIGHT / 2 - player.h / 2;
+        bullets.push({
+          x: player.x + offset,
+          y: player.y - player.height / 2,
+          width: 6,
+          height: 12,
+          speed: 9,
+          color: isHoming ? "#80d8ff" : "#ffeb3b",
+          homing: isHoming,
+          target: null,
+          vx: 0,
+          vy: -9,
+        });
       }
     }
 
-    // ===== 적 / 투사체 / 스킬 웨이브 / 아이템 / 플레이어 투사체 =====
-    const enemyProjectiles = [];
-    const skillWaves = [];
-    const items = [];
-    const playerProjectiles = [];
+    function spawnEnemy() {
+      const enemyWidth = 38;
+      const x = Math.random() * (WIDTH - enemyWidth) + enemyWidth / 2;
+      const pattern = Math.floor(Math.random() * 3);
 
-    const ITEM_TYPES = {
-      attack: {
-        color: "#ff9800",
-        label: "ATK",
-        apply() {
-          player.attackDamage += 5;
-        },
-      },
-      defense: {
-        color: "#03a9f4",
-        label: "DEF",
-        apply() {
-          player.defense += 2;
-          player.maxHp += 10;
-          player.hp += 10;
-        },
-      },
-      speed: {
-        color: "#8bc34a",
-        label: "SPD",
-        apply() {
-          player.speed += 0.3;
-        },
-      },
-    };
-
-    function createEnemy(typeKey, stageIndex, x, y) {
-      const stage = stages[stageIndex];
-      const diff = stage.difficulty;
-      const cfg = MONSTER_TYPES[typeKey];
-
-      const isDragon = typeKey === "dragon";
-      const hpBase = isDragon ? cfg.baseHp : cfg.baseHp * (0.7 + diff * 0.4);
-      const dmgBase = isDragon ? cfg.baseDamage : cfg.baseDamage * (0.7 + diff * 0.3);
-
-      return {
-        type: typeKey,
-        name: cfg.name,
+      enemies.push({
         x,
-        y,
-        w: isDragon ? 96 : 32,
-        h: isDragon ? 64 : 32,
-        color: cfg.color,
+        y: -30,
+        width: enemyWidth,
+        height: enemyWidth * 1.2,
+        speed: 1.8 + Math.random() * 2.4,
+        color: "#90caf9",
+        lastShot: performance.now(),
+        shotInterval: 700 + Math.random() * 900,
+        canDropPower: Math.random() < 0.25,
+        pattern,
+        phase: 0,
+        dirX: Math.random() < 0.5 ? -1 : 1,
+        dead: false,
+      });
+    }
 
-        baseHp: hpBase,
-        hp: hpBase,
-        maxHp: hpBase,
-        baseDamage: dmgBase,
-        damage: dmgBase,
-        speed: cfg.speed + (diff - 1) * 0.15,
-        aggroRange: cfg.aggroRange,
-        attackRange: cfg.attackRange,
-        hitCooldown: cfg.hitCooldown,
-        lastHitTime: 0,
-        xpReward: cfg.xpReward * (0.7 + diff * 0.3),
-
-        baseX: x,
-        baseY: y,
-        patrolRadius: isDragon ? 80 : 60,
-        patrolAngle: Math.random() * Math.PI * 2,
-        patrolTurnSpeed: 0.0015,
-
-        isDead: false,
-        deathTime: 0,
-        respawnDelay: isDragon ? 0 : 10000,
-        rank: 1,
-
-        lastShotTime: 0,
-        shotCooldown: cfg.hitCooldown,
-
-        stunUntil: 0,
+    function spawnBoss() {
+      boss = {
+        x: WIDTH / 2,
+        y: 140,
+        width: 170,
+        height: 90,
+        hp: 380,
+        maxHp: 380,
+        speedX: 3.2,
+        lastShot: performance.now(),
+        shotInterval: 160,
+        dead: false,
+        pattern: 0,
+        patternTimer: 0,
       };
+      bossHpBar.style.display = "block";
+      updateBossHpBar();
     }
 
-    function populateStage(stage) {
-      const diff = stage.difficulty;
-      const arr = stage.enemies;
+    function updateBossHpBar() {
+      if (!boss) return;
+      bossHpInner.style.width = (boss.hp / boss.maxHp) * 100 + "%";
+    }
 
-      const baseCount = 4 + diff;
-      function randPos() {
-        return {
-          x: 400 + Math.random() * (WORLD_WIDTH - 800),
-          y: 400 + Math.random() * (WORLD_HEIGHT - 800),
-        };
-      }
-
-      if (diff === 9) {
-        const centerX = WORLD_WIDTH / 2 - 48;
-        const centerY = WORLD_HEIGHT / 2 - 96;
-        arr.push(createEnemy("dragon", stage.id, centerX, centerY));
-        for (let i = 0; i < 4; i++) {
-          const pos = randPos();
-          const t = i % 2 === 0 ? "tank" : "ranged";
-          arr.push(createEnemy(t, stage.id, pos.x, pos.y));
-        }
+    function showEndText() {
+      if (isVictory) {
+        gameOverText.innerHTML =
+          "VICTORY!<br/>보스를 물리쳤다!<br/><div style='margin-top:8px;font-size:16px;'>화면을 터치하거나 스페이스를 눌러 재시작</div>";
       } else {
-        const typesPool = ["melee", "ranged", "tank", "fast", "bomber"];
-        for (let i = 0; i < baseCount; i++) {
-          const t = typesPool[(i + diff) % typesPool.length];
-          const pos = randPos();
-          arr.push(createEnemy(t, stage.id, pos.x, pos.y));
+        gameOverText.innerHTML =
+          "GAME OVER<br/><div style='margin-top:8px;font-size:16px;'>화면을 터치하거나 스페이스를 눌러 재시작</div>";
+      }
+      gameOverText.style.display = "block";
+    }
+
+    function loseLife() {
+      lives--;
+      livesEl.textContent = lives;
+      if (lives <= 0) endGame(false);
+    }
+
+    function endGame(win) {
+      gameOver = true;
+      isVictory = !!win;
+      bossHpBar.style.display = "none";
+      showEndText();
+    }
+
+    function restartGame() {
+      bullets = [];
+      enemies = [];
+      enemyBullets = [];
+      powerUps = [];
+      score = 0;
+      lives = 3;
+      powerLevel = 0;
+      enemySpawnInterval = 900;
+      totalElapsed = 0;
+      boss = null;
+      scoreEl.textContent = score;
+      livesEl.textContent = lives;
+      powerEl.textContent = powerLevel;
+      bossHpBar.style.display = "none";
+      gameOver = false;
+      isVictory = false;
+      player.x = WIDTH / 2;
+      player.y = HEIGHT - 150;
+      gameOverText.style.display = "none";
+      lastTime = performance.now();
+      meleeActive = false;
+    }
+
+    function rectsCollide(a, b) {
+      return !(
+        a.x + a.width / 2 < b.x - b.width / 2 ||
+        a.x - a.width / 2 > b.x + b.width / 2 ||
+        a.y + a.height / 2 < b.y - b.height / 2 ||
+        a.y - a.height / 2 > b.y + b.height / 2
+      );
+    }
+
+    function acquireTarget(bullet) {
+      let candidates = [];
+      for (const e of enemies) {
+        if (!e.dead) candidates.push(e);
+      }
+      if (boss && !boss.dead) candidates.push(boss);
+      if (!candidates.length) return null;
+
+      let best = null;
+      let bestDist = Infinity;
+      for (const t of candidates) {
+        const dx = t.x - bullet.x;
+        const dy = t.y - bullet.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestDist) {
+          bestDist = d2;
+          best = t;
         }
       }
-
-      stage.initialized = true;
+      return best;
     }
 
-    // 초기 스테이지
-    populateStage(stages[currentStageIndex]);
+    function useBomb() {
+      const now = performance.now();
+      if (now - lastBombTime < BOMB_COOLDOWN) return;
+      lastBombTime = now;
 
-    // ===== 직업별 기본 공격/스킬 구현 =====
-    function getDirectionVector() {
-      if (player.dir === "right") return { dx: 1, dy: 0, angle: 0 };
-      if (player.dir === "left")  return { dx: -1, dy: 0, angle: Math.PI };
-      if (player.dir === "up")    return { dx: 0, dy: -1, angle: -Math.PI/2 };
-      return { dx: 0, dy: 1, angle: Math.PI/2 }; // down
-    }
+      enemies.forEach(e => e.dead = true);
+      enemies = [];
 
-    function spawnPlayerProjectile(speed, damage, color, life = 2000, size = 6) {
-      const dir = getDirectionVector();
-      const startX = player.x + player.w / 2;
-      const startY = player.y + player.h / 2;
-      playerProjectiles.push({
-        x: startX,
-        y: startY,
-        vx: dir.dx,
-        vy: dir.dy,
-        speed,
-        damage,
-        size,
-        color,
-        life,
-      });
-    }
+      enemyBullets.forEach(b => b.dead = true);
+      enemyBullets = [];
 
-    // 전사 기본공격: 기존 근접 베기
-    function warriorBasicAttack(now) {
-      if (!player.isAttacking && now - player.lastAttackTime > player.attackCooldown) {
-        player.isAttacking = true;
-        player.attackTime = 0;
-        player.lastAttackTime = now;
+      if (boss) {
+        boss.hp = 0;
+        boss.dead = true;
+        updateBossHpBar();
+        score += 2000;
+        scoreEl.textContent = score;
+        boss = null;
+        endGame(true);
       }
     }
 
-    // 마법사 기본공격: 마법탄
-    function mageBasicAttack(now) {
-      if (now - player.lastAttackTime < player.attackCooldown) return;
-      player.lastAttackTime = now;
-      spawnPlayerProjectile(7, player.attackDamage, "#66ccff", 2000, 7);
+    function useMelee() {
+      const now = performance.now();
+      if (now - lastMeleeTime < MELEE_COOLDOWN) return;
+      lastMeleeTime = now;
+      meleeActive = true;
+      meleeEndTime = now + MELEE_DURATION;
     }
 
-    // 궁수 기본공격: 빠른 화살
-    function archerBasicAttack(now) {
-      if (now - player.lastAttackTime < player.attackCooldown) return;
-      player.lastAttackTime = now;
-      spawnPlayerProjectile(9, player.attackDamage * 0.8, "#ffee66", 1800, 5);
-    }
+    // 보스 패턴별 탄막
+    function bossShootPattern() {
+      if (!boss || boss.dead) return;
 
-    // 공용 웨이브 스폰
-    function spawnWave(range, width, damage, color) {
-      const dir = getDirectionVector();
-      const startX = player.x + player.w / 2;
-      const startY = player.y + player.h / 2;
-      skillWaves.push({
-        x: startX,
-        y: startY,
-        dirX: dir.dx,
-        dirY: dir.dy,
-        speed: 8,
-        length: range,
-        width,
-        traveled: 0,
-        damage,
-        color: color || "rgba(0,255,255,0.5)",
-        hitSet: new Set(),
-      });
-    }
+      const shotsBaseY = boss.y + boss.height / 2;
 
-    // 전사 스킬 X: 짧지만 강한 충격파
-    function warriorSkillX(now) {
-      const t = now ?? performance.now();
-      if (t - player.lastSkillXTime < player.skillXCooldown) return;
-      if (player.skillGauge < player.skillXCost) return;
-      player.lastSkillXTime = t;
-      player.skillGauge -= player.skillXCost;
+      if (boss.pattern === 0) {
+        // 부채꼴 + 구멍
+        const shots = 18;
+        const baseAngle = Math.PI / 2;
+        const spread = 0.9;
+        const safeIndex = 7 + Math.floor(Math.random() * 3);
+        const extraGap = Math.random() < 0.4;
+        const safeIndex2 = extraGap ? safeIndex + 3 : -1;
 
-      const range = 160;
-      const width = 40;
-      const dmg = player.attackDamage * 1.7;
-      spawnWave(range, width, dmg, "rgba(0,255,255,0.5)");
-    }
-
-    // 마법사 스킬 X: 더 길고 강한 마법 웨이브
-    function mageSkillX(now) {
-      const t = now ?? performance.now();
-      if (t - player.lastSkillXTime < player.skillXCooldown) return;
-      if (player.skillGauge < player.skillXCost) return;
-      player.lastSkillXTime = t;
-      player.skillGauge -= player.skillXCost;
-
-      const range = 220;
-      const width = 50;
-      const dmg = player.attackDamage * 2.0;
-      spawnWave(range, width, dmg, "rgba(255,120,0,0.5)");
-    }
-
-    // 궁수 스킬 X: 가늘지만 멀리 나가는 관통샷
-    function archerSkillX(now) {
-      const t = now ?? performance.now();
-      if (t - player.lastSkillXTime < player.skillXCooldown) return;
-      if (player.skillGauge < player.skillXCost) return;
-      player.lastSkillXTime = t;
-      player.skillGauge -= player.skillXCost;
-
-      const range = 260;
-      const width = 24;
-      const dmg = player.attackDamage * 1.5;
-      spawnWave(range, width, dmg, "rgba(200,255,0,0.5)");
-    }
-
-    // 전사 스킬 C: 기본 스턴
-    function warriorSkillC(now) {
-      useStunSkill(now, 3000, 220, Math.PI / 2);
-    }
-
-    // 마법사 스킬 C: 더 넓은 범위, 약간 긴 스턴
-    function mageSkillC(now) {
-      useStunSkill(now, 3500, 260, Math.PI * 0.7);
-    }
-
-    // 궁수 스킬 C: 짧은 스턴 + 회피용 (스턴은 짧게)
-    function archerSkillC(now) {
-      useStunSkill(now, 1800, 200, Math.PI / 2);
-    }
-
-    function useStunSkill(now, stunDuration, stunRange, angleWidth) {
-      const t = now ?? performance.now();
-      if (t - player.lastSkillCTime < player.skillCCooldown) return;
-      if (player.skillGauge < player.skillCCost) return;
-      player.lastSkillCTime = t;
-      player.skillGauge -= player.skillCCost;
-
-      const px = player.x + player.w / 2;
-      const py = player.y + player.h / 2;
-      let dirAngle = 0;
-      if (player.dir === "right") dirAngle = 0;
-      else if (player.dir === "up") dirAngle = -Math.PI / 2;
-      else if (player.dir === "left") dirAngle = Math.PI;
-      else if (player.dir === "down") dirAngle = Math.PI / 2;
-
-      enemies.forEach((e) => {
-        if (e.isDead) return;
-        const cx = e.x + e.w / 2;
-        const cy = e.y + e.h / 2;
-        const dx = cx - px;
-        const dy = cy - py;
-        const dist = Math.hypot(dx, dy);
-        if (dist > stunRange) return;
-        const ang = Math.atan2(dy, dx);
-        let diff = ang - dirAngle;
-        while (diff > Math.PI) diff -= 2 * Math.PI;
-        while (diff < -Math.PI) diff += 2 * Math.PI;
-        if (Math.abs(diff) <= angleWidth / 2) {
-          e.stunUntil = performance.now() + stunDuration;
+        for (let i = 0; i < shots; i++) {
+          if (i === safeIndex || i === safeIndex2) continue;
+          const t = i / (shots - 1) - 0.5;
+          const angle = baseAngle + t * spread;
+          enemyBullets.push({
+            x: boss.x,
+            y: shotsBaseY,
+            width: 6,
+            height: 12,
+            vx: Math.cos(angle) * 5.0,
+            vy: Math.sin(angle) * 5.0,
+            color: "#ffeb3b",
+          });
         }
-      });
+      } else if (boss.pattern === 1) {
+        // 커튼 패턴
+        const columns = 12;
+        const margin = 40;
+        const step = (WIDTH - margin * 2) / (columns - 1);
+        const safeCol = Math.floor(Math.random() * columns);
+        const extraSafe = (Math.random() < 0.5)
+          ? Math.min(columns - 1, safeCol + 2)
+          : -1;
+
+        for (let i = 0; i < columns; i++) {
+          if (i === safeCol || i === extraSafe) continue;
+          const xPos = margin + i * step;
+          enemyBullets.push({
+            x: xPos,
+            y: shotsBaseY,
+            width: 6,
+            height: 14,
+            vx: 0,
+            vy: 5.5,
+            color: "#ffb74d",
+          });
+        }
+      } else if (boss.pattern === 2) {
+        // 조준 3-way 연사
+        const burstCount = 3;
+        for (let b = 0; b < burstCount; b++) {
+          const dx = player.x - boss.x;
+          const dy = player.y - shotsBaseY;
+          const baseLen = Math.hypot(dx, dy) || 1;
+          const baseAngle = Math.atan2(dy, dx);
+          const spread = 0.15;
+
+          for (let i = -1; i <= 1; i++) {
+            const angle = baseAngle + i * spread;
+            const speed = 5.8;
+            enemyBullets.push({
+              x: boss.x,
+              y: shotsBaseY,
+              width: 6,
+              height: 12,
+              vx: Math.cos(angle) * speed,
+              vy: Math.sin(angle) * speed,
+              color: "#ff4081",
+            });
+          }
+        }
+      }
     }
 
-    // ===== 메인 루프 =====
-    let lastTime = performance.now();
-
-    function update(dt) {
+    function update(delta) {
+      if (gameOver) return;
+      totalElapsed += delta;
       const now = performance.now();
 
-      if (!selectedJob) {
-        // 직업 선택 전에는 게임 로직 정지
-        return;
+      if (meleeActive && now > meleeEndTime) {
+        meleeActive = false;
       }
 
-      // 방어 스킬(S)
-      const wantGuard = isPressed("s");
-      if (wantGuard && player.skillGauge > 0) {
-        player.isGuarding = true;
-      } else {
-        player.isGuarding = false;
-      }
-      if (player.isGuarding) {
-        const drain = (player.guardDrainPerSec * dt) / 1000;
-        player.skillGauge = clamp(player.skillGauge - drain, 0, player.skillGaugeMax);
-        if (player.skillGauge <= 0) player.isGuarding = false;
+      if (!boss && totalElapsed >= BOSS_SPAWN_TIME) {
+        spawnBoss();
       }
 
-      // 이동
-      let dx = 0;
-      let dy = 0;
-      if (isPressed("ArrowLeft"))  { dx -= 1; player.dir = "left"; }
-      if (isPressed("ArrowRight")) { dx += 1; player.dir = "right"; }
-      if (isPressed("ArrowUp"))    { dy -= 1; player.dir = "up"; }
-      if (isPressed("ArrowDown"))  { dy += 1; player.dir = "down"; }
+      if (keys["ArrowLeft"]) player.x -= player.speed;
+      if (keys["ArrowRight"]) player.x += player.speed;
+      if (keys["ArrowUp"]) player.y -= player.speed;
+      if (keys["ArrowDown"]) player.y += player.speed;
 
-      if (dx !== 0 || dy !== 0) {
-        const len = Math.hypot(dx, dy);
-        dx /= len;
-        dy /= len;
-        const moveSpeed = player.isGuarding ? player.speed * 0.5 : player.speed;
-        player.x += dx * moveSpeed;
-        player.y += dy * moveSpeed;
+      if (player.x < player.width / 2) player.x = player.width / 2;
+      if (player.x > WIDTH - player.width / 2) player.x = WIDTH - player.width / 2;
+      if (player.y < player.height / 2) player.y = player.height / 2;
+      if (player.y > HEIGHT - player.height / 2) player.y = HEIGHT - player.height / 2;
+
+      if (keys["Space"]) {
+        if (!shoot.cooldown || now - shoot.cooldown > 200) {
+          shoot();
+          shoot.cooldown = now;
+        }
       }
 
-      player.x = clamp(player.x, 0, WORLD_WIDTH - player.w);
-      player.y = clamp(player.y, 0, WORLD_HEIGHT - player.h);
-
-      // 기본 공격 (A)
-      if (isPressed("a") && player.performBasicAttack) {
-        player.performBasicAttack(now);
-      }
-
-      // 전사 근접 공격 타이머 업데이트
-      if (selectedJob === "warrior") {
-        if (player.isAttacking) {
-          player.attackTime += dt;
-          if (player.attackTime >= player.attackDuration) {
-            player.isAttacking = false;
+      // 내 미사일
+      bullets.forEach((b) => {
+        if (b.homing) {
+          if (!b.target) {
+            b.target = acquireTarget(b);
+          }
+          if (b.target && !b.target.dead) {
+            const dx = b.target.x - b.x;
+            const dy = b.target.y - b.y;
+            const L = Math.hypot(dx, dy) || 1;
+            b.vx = (dx / L) * b.speed;
+            b.vy = (dy / L) * b.speed;
+          } else if (b.target) {
+            b.homing = false;
           }
         }
-      } else {
-        player.isAttacking = false;
+        b.x += b.vx || 0;
+        b.y += b.vy || -b.speed;
+      });
+
+      bullets = bullets.filter(
+        (b) =>
+          b.x > -50 &&
+          b.x < WIDTH + 50 &&
+          b.y > -50 &&
+          b.y < HEIGHT + 50 &&
+          !b.dead
+      );
+
+      // 적 스폰
+      lastEnemySpawn += delta;
+      if (lastEnemySpawn > enemySpawnInterval) {
+        spawnEnemy();
+        lastEnemySpawn = 0;
+        enemySpawnInterval = Math.max(350, enemySpawnInterval - 2);
       }
 
-      // 스킬 입력
-      if (isPressed("x") && player.performSkillX) {
-        player.performSkillX(now);
-      }
-      if (isPressed("c") && player.performSkillC) {
-        player.performSkillC(now);
-      }
-
-      // 기본 공격 범위(전사만)
-      let attackBox = null;
-      if (selectedJob === "warrior" && player.isAttacking) {
-        const range = 28;
-        const thickness = 24;
-        if (player.dir === "right") {
-          attackBox = {
-            x: player.x + player.w,
-            y: player.y + (player.h - thickness) / 2,
-            w: range,
-            h: thickness,
-          };
-        } else if (player.dir === "left") {
-          attackBox = {
-            x: player.x - range,
-            y: player.y + (player.h - thickness) / 2,
-            w: range,
-            h: thickness,
-          };
-        } else if (player.dir === "up") {
-          attackBox = {
-            x: player.x + (player.w - thickness) / 2,
-            y: player.y - range,
-            w: thickness,
-            h: range,
-          };
-        } else if (player.dir === "down") {
-          attackBox = {
-            x: player.x + (player.w - thickness) / 2,
-            y: player.y + player.h,
-            w: thickness,
-            h: range,
-          };
-        }
-      }
-
-      // 몬스터 업데이트
+      // 적 이동 + 공격
       enemies.forEach((e) => {
-        const isDragon = e.type === "dragon";
-
-        if (e.isDead) {
-          if (!isDragon && e.respawnDelay > 0) {
-            if (now - e.deathTime >= e.respawnDelay) {
-              e.rank += 1;
-              e.maxHp = e.baseHp * (1 + (e.rank - 1) * 0.4);
-              e.hp = e.maxHp;
-              e.damage = e.baseDamage * (1 + (e.rank - 1) * 0.3);
-              e.x = e.baseX;
-              e.y = e.baseY;
-              e.isDead = false;
-              e.stunUntil = 0;
-            }
+        if (e.pattern === 0) {
+          e.y += e.speed;
+        } else if (e.pattern === 1) {
+          e.y += e.speed * 0.9;
+          e.phase += 0.09;
+          e.x += Math.sin(e.phase) * 3.2;
+        } else if (e.pattern === 2) {
+          e.y += e.speed * 1.35;
+          e.x += e.dirX * 2.7;
+          if (e.x < e.width / 2 || e.x > WIDTH - e.width / 2) {
+            e.dirX *= -1;
           }
-          return;
         }
 
-        const stunned = now < e.stunUntil;
-        const cx = e.x + e.w / 2;
-        const cy = e.y + e.h / 2;
-        const px = player.x + player.w / 2;
-        const py = player.y + player.h / 2;
-        const dist = Math.hypot(px - cx, py - cy) || 1;
-        const toPlayerX = (px - cx) / dist;
-        const toPlayerY = (py - cy) / dist;
-
-        let moveX = 0;
-        let moveY = 0;
-
-        if (!stunned) {
-          if (dist < e.aggroRange) {
-            if (["melee","tank","fast","bomber"].includes(e.type)) {
-              if (dist > e.attackRange * 0.9) {
-                moveX = toPlayerX * e.speed;
-                moveY = toPlayerY * e.speed;
-              }
-              if (dist <= e.attackRange) {
-                if (now - e.lastHitTime > e.hitCooldown) {
-                  let dmg = e.damage;
-                  if (e.type === "bomber") dmg *= 1.2;
-                  damagePlayer(dmg);
-                  e.lastHitTime = now;
-                }
-              }
-            } else if (e.type === "ranged" || e.type === "dragon") {
-              const desiredMin = e.attackRange * 0.5;
-              const desiredMax = e.attackRange * 0.9;
-              if (dist > desiredMax) {
-                moveX = toPlayerX * e.speed;
-                moveY = toPlayerY * e.speed;
-              } else if (dist < desiredMin) {
-                moveX = -toPlayerX * e.speed;
-                moveY = -toPlayerY * e.speed;
-              }
-              if (dist <= e.attackRange && now - e.lastShotTime > e.shotCooldown) {
-                if (e.type === "dragon") {
-                  spawnProjectile(e, toPlayerX, toPlayerY, 1.3);
-                  const ang = Math.atan2(toPlayerY, toPlayerX);
-                  spawnProjectile(e, Math.cos(ang + 0.2), Math.sin(ang + 0.2), 1.3);
-                  spawnProjectile(e, Math.cos(ang - 0.2), Math.sin(ang - 0.2), 1.3);
-                } else {
-                  spawnProjectile(e, toPlayerX, toPlayerY, 1.0);
-                }
-                e.lastShotTime = now;
-              }
+        if (now - e.lastShot > e.shotInterval) {
+          e.lastShot = now;
+          if (e.pattern === 0) {
+            for (let n = 0; n < 2; n++) {
+              const dx = player.x - e.x;
+              const dy = player.y - e.y;
+              const L = Math.hypot(dx, dy) || 1;
+              enemyBullets.push({
+                x: e.x,
+                y: e.y,
+                width: 6,
+                height: 12,
+                vx: (dx / L) * 4.3,
+                vy: (dy / L) * 4.3,
+                color: "#ff5252",
+              });
             }
+          } else if (e.pattern === 1) {
+            const baseAngle = Math.PI / 2;
+            const spread = 0.22;
+            for (let i = -2; i <= 2; i++) {
+              const angle = baseAngle + i * spread;
+              enemyBullets.push({
+                x: e.x,
+                y: e.y,
+                width: 6,
+                height: 12,
+                vx: Math.cos(angle) * 3.7,
+                vy: Math.sin(angle) * 3.7,
+                color: "#ff8a65",
+              });
+            }
+          } else if (e.pattern === 2) {
+            const dx = player.x - e.x;
+            const dy = player.y - e.y;
+            const L = Math.hypot(dx, dy) || 1;
+            enemyBullets.push({
+              x: e.x,
+              y: e.y,
+              width: 6,
+              height: 12,
+              vx: (dx / L) * 6.0,
+              vy: (dy / L) * 6.0,
+              color: "#ff4081",
+            });
+          }
+        }
+
+        if (e.y - e.height / 2 > HEIGHT) {
+          e.dead = true;
+        }
+      });
+
+      enemies = enemies.filter((e) => !e.dead);
+
+      // 보스
+      if (boss) {
+        boss.x += boss.speedX;
+        if (boss.x - boss.width / 2 < 0 || boss.x + boss.width / 2 > WIDTH) {
+          boss.speedX *= -1;
+        }
+
+        boss.patternTimer += delta;
+        if (boss.patternTimer > BOSS_PATTERN_CHANGE_TIME) {
+          boss.patternTimer = 0;
+          boss.pattern = (boss.pattern + 1) % 3;
+        }
+
+        if (!boss.dead && now - boss.lastShot > boss.shotInterval) {
+          boss.lastShot = now;
+          bossShootPattern();
+        }
+      }
+
+      // 적 미사일 이동
+      enemyBullets.forEach((b) => {
+        b.x += b.vx;
+        b.y += b.vy;
+      });
+
+      // 근접공격 영역 처리 (전방 미사일 제거)
+      if (meleeActive) {
+        const rangeX = 140;
+        const rangeY = 160;
+        enemyBullets.forEach((b) => {
+          if (b.dead) return;
+          if (
+            b.y < player.y &&
+            player.y - b.y < rangeY &&
+            Math.abs(b.x - player.x) < rangeX / 2
+          ) {
+            b.dead = true;
+          }
+        });
+      }
+
+      enemyBullets = enemyBullets.filter(
+        (b) =>
+          b.x > -50 &&
+          b.x < WIDTH + 50 &&
+          b.y > -50 &&
+          b.y < HEIGHT + 50 &&
+          !b.dead
+      );
+
+      // 파워업 이동
+      powerUps.forEach((p) => {
+        p.y += p.speed;
+      });
+      powerUps = powerUps.filter((p) => p.y < HEIGHT + 30 && !p.dead);
+
+      // 내 미사일 → 적/보스 충돌
+      bullets.forEach((b) => {
+        enemies.forEach((e) => {
+          if (!b.dead && !e.dead && rectsCollide(b, e)) {
+            b.dead = true;
+            e.dead = true;
+            score += 10;
+            scoreEl.textContent = score;
+
+            if (e.canDropPower) {
+              powerUps.push({
+                x: e.x,
+                y: e.y,
+                radius: 12,
+                speed: 3,
+                color: "#82b1ff",
+                dead: false,
+              });
+            }
+          }
+        });
+
+        if (boss && !boss.dead && !b.dead && rectsCollide(b, boss)) {
+          b.dead = true;
+          boss.hp -= 2;
+          if (boss.hp <= 0) {
+            boss.hp = 0;
+            boss.dead = true;
+            updateBossHpBar();
+            score += 2000;
+            scoreEl.textContent = score;
+            boss = null;
+            endGame(true);
           } else {
-            e.patrolAngle += e.patrolTurnSpeed * dt;
-            const targetX = e.baseX + Math.cos(e.patrolAngle) * e.patrolRadius;
-            const targetY = e.baseY + Math.sin(e.patrolAngle) * e.patrolRadius;
-            const dxP = targetX - e.x;
-            const dyP = targetY - e.y;
-            const dP = Math.hypot(dxP, dyP) || 1;
-            moveX = (dxP / dP) * 0.6;
-            moveY = (dyP / dP) * 0.6;
-          }
-        }
-
-        e.x += moveX;
-        e.y += moveY;
-        e.x = clamp(e.x, 0, WORLD_WIDTH - e.w);
-        e.y = clamp(e.y, 0, WORLD_HEIGHT - e.h);
-
-        // 플레이어와 충돌 시 관통 방지 (몬스터를 밀어냄)
-        const pRect = { x: player.x, y: player.y, w: player.w, h: player.h };
-        const eRect = { x: e.x, y: e.y, w: e.w, h: e.h };
-        if (rectsOverlap(eRect, pRect)) {
-          const px2 = player.x + player.w / 2;
-          const py2 = player.y + player.h / 2;
-          const ex2 = e.x + e.w / 2;
-          const ey2 = e.y + e.h / 2;
-          let dx2 = ex2 - px2;
-          let dy2 = ey2 - py2;
-          let dist2 = Math.hypot(dx2, dy2) || 1;
-          const minDist = (Math.max(player.w, player.h) + Math.max(e.w, e.h)) / 2;
-          const overlap = minDist - dist2;
-          if (overlap > 0) {
-            dx2 /= dist2;
-            dy2 /= dist2;
-            e.x += dx2 * overlap;
-            e.y += dy2 * overlap;
-            e.x = clamp(e.x, 0, WORLD_WIDTH - e.w);
-            e.y = clamp(e.y, 0, WORLD_HEIGHT - e.h);
-          }
-        }
-
-        // 전사 근접 공격 피격
-        if (attackBox && !e.isDead) {
-          const enemyRect = { x: e.x, y: e.y, w: e.w, h: e.h };
-          if (rectsOverlap(attackBox, enemyRect)) {
-            let dmg = player.attackDamage * (dt / player.attackDuration);
-            if (e.type === "dragon" && player.level < 15) {
-              dmg *= 0.2;
-            }
-            e.hp -= dmg;
-            addSkillGauge(player.skillGaugeOnHit * (dt / player.attackDuration));
-            if (e.hp <= 0) {
-              handleEnemyDeath(e);
-            }
+            updateBossHpBar();
           }
         }
       });
 
-      // 스킬 웨이브 업데이트
-      for (let i = skillWaves.length - 1; i >= 0; i--) {
-        const wv = skillWaves[i];
-        const step = wv.speed * (dt / 16);
-        wv.x += wv.dirX * step;
-        wv.y += wv.dirY * step;
-        wv.traveled += step;
-        if (wv.traveled >= wv.length) {
-          skillWaves.splice(i, 1);
-          continue;
+      bullets = bullets.filter((b) => !b.dead);
+      enemies = enemies.filter((e) => !e.dead);
+
+      // 플레이어 피격
+      enemyBullets.forEach((b) => {
+        if (!b.dead && rectsCollide(player, b)) {
+          b.dead = true;
+          loseLife();
         }
-        const halfW = wv.width / 2;
-        const rect = {
-          x: wv.x - halfW,
-          y: wv.y - halfW,
-          w: wv.width,
-          h: wv.width,
-        };
-        enemies.forEach((e) => {
-          if (e.isDead) return;
-          const key = e.type + "_" + e.baseX + "_" + e.baseY + "_" + e.rank;
-          if (wv.hitSet.has(key)) return;
-          const enemyRect = { x: e.x, y: e.y, w: e.w, h: e.h };
-          if (rectsOverlap(rect, enemyRect)) {
-            let dmg = wv.damage;
-            if (e.type === "dragon" && player.level < 15) {
-              dmg *= 0.3;
-            }
-            e.hp -= dmg;
-            addSkillGauge(player.skillGaugeOnHit * 2);
-            if (e.hp <= 0) {
-              handleEnemyDeath(e);
-            }
-            wv.hitSet.add(key);
-          }
-        });
-      }
-
-      // 적 투사체
-      for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
-        const p = enemyProjectiles[i];
-        p.x += p.vx * p.speed;
-        p.y += p.vy * p.speed;
-        p.life -= dt;
-
-        const projRect = { x: p.x, y: p.y, w: p.size, h: p.size };
-        const playerRect = { x: player.x, y: player.y, w: player.w, h: player.h };
-        if (rectsOverlap(projRect, playerRect)) {
-          damagePlayer(p.damage);
-          enemyProjectiles.splice(i, 1);
-          continue;
-        }
-
-        if (
-          p.life <= 0 ||
-          p.x < 0 || p.x > WORLD_WIDTH ||
-          p.y < 0 || p.y > WORLD_HEIGHT
-        ) {
-          enemyProjectiles.splice(i, 1);
-        }
-      }
-
-      // 플레이어 투사체
-      for (let i = playerProjectiles.length - 1; i >= 0; i--) {
-        const p = playerProjectiles[i];
-        p.x += p.vx * p.speed;
-        p.y += p.vy * p.speed;
-        p.life -= dt;
-
-        const projRect = { x: p.x, y: p.y, w: p.size, h: p.size };
-
-        enemies.forEach((e) => {
-          if (e.isDead) return;
-          const enemyRect = { x: e.x, y: e.y, w: e.w, h: e.h };
-          if (rectsOverlap(projRect, enemyRect)) {
-            let dmg = p.damage;
-            if (e.type === "dragon" && player.level < 15) {
-              dmg *= 0.3;
-            }
-            e.hp -= dmg;
-            addSkillGauge(player.skillGaugeOnHit);
-            if (e.hp <= 0) {
-              handleEnemyDeath(e);
-            }
-            p.life = 0;
-          }
-        });
-
-        if (
-          p.life <= 0 ||
-          p.x < 0 || p.x > WORLD_WIDTH ||
-          p.y < 0 || p.y > WORLD_HEIGHT
-        ) {
-          playerProjectiles.splice(i, 1);
-        }
-      }
-
-      // 아이템 획득
-      for (let i = items.length - 1; i >= 0; i--) {
-        const it = items[i];
-        const itemRect = { x: it.x, y: it.y, w: it.w, h: it.h };
-        const playerRect = { x: player.x, y: player.y, w: player.w, h: player.h };
-        if (rectsOverlap(itemRect, playerRect)) {
-          ITEM_TYPES[it.type].apply();
-          items.splice(i, 1);
-        }
-      }
-
-      // 포탈
-      handlePortals();
-
-      // 카메라
-      camera.x = clamp(
-        player.x + player.w / 2 - camera.w / 2,
-        0,
-        WORLD_WIDTH - camera.w
-      );
-      camera.y = clamp(
-        player.y + player.h / 2 - camera.h / 2,
-        0,
-        WORLD_HEIGHT - camera.h
-      );
-    }
-
-    function handleEnemyDeath(e) {
-      if (e.isDead) return;
-      e.hp = 0;
-      e.isDead = true;
-      e.deathTime = performance.now();
-      player.kills += 1;
-      gainXP(e.xpReward);
-      addSkillGauge(player.skillGaugeOnKill);
-
-      if (Math.random() < 0.4) {
-        const keys = Object.keys(ITEM_TYPES);
-        const type = keys[Math.floor(Math.random() * keys.length)];
-        items.push({
-          type,
-          x: e.x + e.w / 2 - 10,
-          y: e.y + e.h / 2 - 10,
-          w: 20,
-          h: 20,
-        });
-      }
-    }
-
-    function spawnProjectile(enemy, dirX, dirY, speedMul) {
-      const norm = Math.hypot(dirX, dirY) || 1;
-      const vx = dirX / norm;
-      const vy = dirY / norm;
-
-      enemyProjectiles.push({
-        x: enemy.x + enemy.w / 2,
-        y: enemy.y + enemy.h / 2,
-        vx,
-        vy,
-        speed: 4 * (speedMul || 1),
-        size: enemy.type === "dragon" ? 14 : 8,
-        damage: enemy.type === "dragon" ? enemy.damage * 0.6 : enemy.damage * 0.5,
-        life: 2500,
       });
-    }
+      enemyBullets = enemyBullets.filter((b) => !b.dead);
 
-    // ===== 포탈 =====
-    function handlePortals() {
-      const playerRect = { x: player.x, y: player.y, w: player.w, h: player.h };
-      const portals = getCurrentStagePortals();
-      for (const p of portals) {
-        if (p.targetStage === null) continue;
-        if (rectsOverlap(playerRect, p.rect)) {
-          goToStage(p.targetStage, p.dirFrom);
-          break;
-        }
-      }
-    }
-
-    function getCurrentStagePortals() {
-      const list = [];
-      const idx = currentStageIndex;
-      const portalWidth = 80;
-      const portalThickness = 40;
-
-      list.push({
-        dirFrom: "north",
-        targetStage: getNeighborStage(idx, "north"),
-        rect: {
-          x: WORLD_WIDTH / 2 - portalWidth / 2,
-          y: 0,
-          w: portalWidth,
-          h: portalThickness,
-        },
-      });
-      list.push({
-        dirFrom: "south",
-        targetStage: getNeighborStage(idx, "south"),
-        rect: {
-          x: WORLD_WIDTH / 2 - portalWidth / 2,
-          y: WORLD_HEIGHT - portalThickness,
-          w: portalWidth,
-          h: portalThickness,
-        },
-      });
-      list.push({
-        dirFrom: "west",
-        targetStage: getNeighborStage(idx, "west"),
-        rect: {
-          x: 0,
-          y: WORLD_HEIGHT / 2 - portalWidth / 2,
-          w: portalThickness,
-          h: portalWidth,
-        },
-      });
-      list.push({
-        dirFrom: "east",
-        targetStage: getNeighborStage(idx, "east"),
-        rect: {
-          x: WORLD_WIDTH - portalThickness,
-          y: WORLD_HEIGHT / 2 - portalWidth / 2,
-          w: portalThickness,
-          h: portalWidth,
-        },
-      });
-
-      return list;
-    }
-
-    // ===== 렌더링 =====
-    function draw() {
-      const offsetX = camera.x;
-      const offsetY = camera.y;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // 바닥 격자
-      ctx.fillStyle = "#303030";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.strokeStyle = "#3a3a3a";
-      ctx.lineWidth = 1;
-      const tileSize = 40;
-      const startX = Math.floor(offsetX / tileSize) * tileSize;
-      const endX = offsetX + canvas.width;
-      const startY = Math.floor(offsetY / tileSize) * tileSize;
-      const endY = offsetY + canvas.height;
-
-      for (let x = startX; x <= endX; x += tileSize) {
-        ctx.beginPath();
-        ctx.moveTo(x - offsetX, 0);
-        ctx.lineTo(x - offsetX, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = startY; y <= endY; y += tileSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y - offsetY);
-        ctx.lineTo(canvas.width, y - offsetY);
-        ctx.stroke();
-      }
-
-      // 포탈
-      const portals = getCurrentStagePortals();
-      portals.forEach((p) => {
-        if (p.targetStage === null) return;
-        const sx = p.rect.x - offsetX;
-        const sy = p.rect.y - offsetY;
-        ctx.fillStyle = "rgba(0, 200, 255, 0.4)";
-        ctx.fillRect(sx, sy, p.rect.w, p.rect.h);
-        ctx.strokeStyle = "rgba(0, 255, 255, 0.9)";
-        ctx.lineWidth = 2;
-        ctx.strokeRect(sx, sy, p.rect.w, p.rect.h);
-      });
-
-      // 아이템
-      items.forEach((it) => {
-        const def = ITEM_TYPES[it.type];
-        const sx = it.x - offsetX;
-        const sy = it.y - offsetY;
-        ctx.fillStyle = def.color;
-        ctx.fillRect(sx, sy, it.w, it.h);
-        ctx.fillStyle = "#000";
-        ctx.font = "10px system-ui";
-        ctx.textAlign = "center";
-        ctx.fillText(def.label, sx + it.w / 2, sy + it.h + 10);
-        ctx.textAlign = "left";
-      });
-
-      // 몬스터
       enemies.forEach((e) => {
-        if (e.isDead) return;
-        const sx = e.x - offsetX;
-        const sy = e.y - offsetY;
-        const stunned = performance.now() < e.stunUntil;
-
-        ctx.fillStyle = e.color;
-        ctx.fillRect(sx, sy, e.w, e.h);
-
-        if (stunned) {
-          ctx.strokeStyle = "#ffff00";
-          ctx.lineWidth = 2;
-          ctx.strokeRect(sx, sy, e.w, e.h);
+        if (!e.dead && rectsCollide(player, e)) {
+          e.dead = true;
+          loseLife();
         }
-
-        const barWidth = e.w;
-        const barHeight = 4;
-        const hpRatio = e.hp / e.maxHp;
-        ctx.fillStyle = "#550000";
-        ctx.fillRect(sx, sy - barHeight - 2, barWidth, barHeight);
-        ctx.fillStyle = "#ff5252";
-        ctx.fillRect(sx, sy - barHeight - 2, barWidth * hpRatio, barHeight);
-
-        ctx.fillStyle = "#fff";
-        ctx.font = "10px system-ui";
-        ctx.textAlign = "center";
-        ctx.fillText(e.type === "dragon" ? "DRAGON" : e.type.toUpperCase(), sx + e.w / 2, sy - barHeight - 6);
-        ctx.textAlign = "left";
       });
+      enemies = enemies.filter((e) => !e.dead);
 
-      // 적 투사체
-      enemyProjectiles.forEach((p) => {
-        const sx = p.x - offsetX;
-        const sy = p.y - offsetY;
-        ctx.fillStyle = p.size > 10 ? "#ff9800" : "#ffeb3b";
-        ctx.fillRect(sx, sy, p.size, p.size);
+      // 파워업 획득
+      powerUps.forEach((p) => {
+        const dx = p.x - player.x;
+        const dy = p.y - player.y;
+        if (Math.hypot(dx, dy) < p.radius + player.width / 2) {
+          p.dead = true;
+          if (powerLevel < 3) {
+            powerLevel++;
+            powerEl.textContent = powerLevel;
+          }
+        }
       });
+      powerUps = powerUps.filter((p) => !p.dead);
+    }
 
-      // 플레이어 투사체
-      playerProjectiles.forEach((p) => {
-        const sx = p.x - offsetX;
-        const sy = p.y - offsetY;
-        ctx.fillStyle = p.color || "#ffffff";
-        ctx.fillRect(sx, sy, p.size, p.size);
-      });
+    // 🐱 고양이 그리기
+    function drawPlayer() {
+      const w = player.width;
+      const h = player.height;
+      const cx = player.x;
+      const cy = player.y;
 
-      // 스킬 웨이브
-      skillWaves.forEach((wv) => {
-        const sx = wv.x - offsetX;
-        const sy = wv.y - offsetY;
-        ctx.fillStyle = wv.color || "rgba(0,255,255,0.5)";
-        ctx.beginPath();
-        ctx.arc(sx, sy, wv.width / 2, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      ctx.save();
+      ctx.translate(cx, cy);
 
-      // 플레이어
-      const px = player.x - offsetX;
-      const py = player.y - offsetY;
+      // 몸통
+      ctx.fillStyle = "#ffcc80";
+      ctx.beginPath();
+      ctx.ellipse(0, h * 0.15, w * 0.35, h * 0.4, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-      ctx.fillStyle = player.isGuarding ? "#90caf9" : player.color;
-      ctx.fillRect(px, py, player.w, player.h);
+      // 머리
+      ctx.beginPath();
+      ctx.arc(0, -h * 0.15, w * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 귀
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.2, -h * 0.45);
+      ctx.lineTo(-w * 0.05, -h * 0.25);
+      ctx.lineTo(-w * 0.32, -h * 0.25);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.2, -h * 0.45);
+      ctx.lineTo(w * 0.05, -h * 0.25);
+      ctx.lineTo(w * 0.32, -h * 0.25);
+      ctx.closePath();
+      ctx.fill();
+
+      // 귀 안쪽
+      ctx.fillStyle = "#ff8a80";
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.19, -h * 0.4);
+      ctx.lineTo(-w * 0.08, -h * 0.27);
+      ctx.lineTo(-w * 0.28, -h * 0.27);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(w * 0.19, -h * 0.4);
+      ctx.lineTo(w * 0.08, -h * 0.27);
+      ctx.lineTo(w * 0.28, -h * 0.27);
+      ctx.closePath();
+      ctx.fill();
 
       // 눈
       ctx.fillStyle = "#000";
-      const eyeSize = 4;
-      if (player.dir === "right") {
-        ctx.fillRect(px + player.w - 6, py + 8, eyeSize, eyeSize);
-      } else if (player.dir === "left") {
-        ctx.fillRect(px + 2, py + 8, eyeSize, eyeSize);
-      } else if (player.dir === "up") {
-        ctx.fillRect(px + 7, py + 4, eyeSize, eyeSize);
-      } else if (player.dir === "down") {
-        ctx.fillRect(px + 7, py + player.h - 8, eyeSize, eyeSize);
-      }
+      ctx.beginPath();
+      ctx.arc(-w * 0.12, -h * 0.16, w * 0.04, 0, Math.PI * 2);
+      ctx.arc(w * 0.12, -h * 0.16, w * 0.04, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 전사 공격 범위 표시
-      if (selectedJob === "warrior" && player.isAttacking) {
-        const range = 28;
-        const thickness = 24;
-        let ax, ay, aw, ah;
-        if (player.dir === "right") {
-          ax = player.x + player.w - offsetX;
-          ay = player.y + (player.h - thickness) / 2 - offsetY;
-          aw = range;
-          ah = thickness;
-        } else if (player.dir === "left") {
-          ax = player.x - range - offsetX;
-          ay = player.y + (player.h - thickness) / 2 - offsetY;
-          aw = range;
-          ah = thickness;
-        } else if (player.dir === "up") {
-          ax = player.x + (player.w - thickness) / 2 - offsetX;
-          ay = player.y - range - offsetY;
-          aw = thickness;
-          ah = range;
-        } else {
-          ax = player.x + (player.w - thickness) / 2 - offsetX;
-          ay = player.y + player.h - offsetY;
-          aw = thickness;
-          ah = range;
-        }
-        ctx.fillStyle = "rgba(255,255,0,0.3)";
-        ctx.fillRect(ax, ay, aw, ah);
-      }
-
-      // UI
-      ctx.textAlign = "left";
+      // 눈 하이라이트
       ctx.fillStyle = "#fff";
-      ctx.font = "16px system-ui";
-      ctx.fillText("HP:", 16, 24);
+      ctx.beginPath();
+      ctx.arc(-w * 0.13, -h * 0.17, w * 0.015, 0, Math.PI * 2);
+      ctx.arc(w * 0.11, -h * 0.17, w * 0.015, 0, Math.PI * 2);
+      ctx.fill();
 
-      const hpBarX = 60;
-      const hpBarY = 10;
-      const hpBarW = 220;
-      const hpBarH = 14;
-      const hpRatio = player.hp / player.maxHp;
+      // 코
+      ctx.fillStyle = "#d81b60";
+      ctx.beginPath();
+      ctx.moveTo(0, -h * 0.1);
+      ctx.lineTo(-w * 0.03, -h * 0.07);
+      ctx.lineTo(w * 0.03, -h * 0.07);
+      ctx.closePath();
+      ctx.fill();
 
-      ctx.fillStyle = "#555";
-      ctx.fillRect(hpBarX, hpBarY, hpBarW, hpBarH);
-      ctx.fillStyle = "#4caf50";
-      ctx.fillRect(hpBarX, hpBarY, hpBarW * hpRatio, hpBarH);
-      ctx.strokeStyle = "#222";
-      ctx.strokeRect(hpBarX, hpBarY, hpBarW, hpBarH);
+      // 입
+      ctx.strokeStyle = "#d81b60";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -h * 0.07);
+      ctx.lineTo(0, -h * 0.05);
+      ctx.moveTo(0, -h * 0.05);
+      ctx.quadraticCurveTo(-w * 0.03, -h * 0.03, -w * 0.06, -h * 0.02);
+      ctx.moveTo(0, -h * 0.05);
+      ctx.quadraticCurveTo(w * 0.03, -h * 0.03, w * 0.06, -h * 0.02);
+      ctx.stroke();
 
-      ctx.fillStyle = "#fff";
-      ctx.font = "13px system-ui";
-      ctx.fillText(
-        `${Math.round(player.hp)}/${player.maxHp}`,
-        hpBarX + 5,
-        hpBarY + 11
-      );
+      // 수염
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(-w * 0.06, -h * 0.11);
+      ctx.lineTo(-w * 0.18, -h * 0.11);
+      ctx.moveTo(-w * 0.06, -h * 0.095);
+      ctx.lineTo(-w * 0.18, -h * 0.075);
 
-      const panelY = 38;
-      ctx.font = "14px system-ui";
-      ctx.fillText(
-        `직업: ${selectedJob ? selectedJob.toUpperCase() : "NONE"}  Lv.${player.level}  XP: ${Math.floor(player.xp)}/${player.xpToNext}`,
-        16,
-        panelY
-      );
-      ctx.fillText(`Kills: ${player.kills}`, 16, panelY + 18);
+      ctx.moveTo(w * 0.06, -h * 0.11);
+      ctx.lineTo(w * 0.18, -h * 0.11);
+      ctx.moveTo(w * 0.06, -h * 0.095);
+      ctx.lineTo(w * 0.18, -h * 0.075);
+      ctx.stroke();
 
-      const stage = stages[currentStageIndex];
-      ctx.fillText(
-        `Stage ${stage.difficulty} / 9`,
-        16,
-        panelY + 36
-      );
+      // 앞발
+      ctx.fillStyle = "#ffcc80";
+      ctx.beginPath();
+      ctx.ellipse(-w * 0.13, h * 0.4, w * 0.07, h * 0.1, 0, 0, Math.PI * 2);
+      ctx.ellipse(w * 0.13, h * 0.4, w * 0.07, h * 0.1, 0, 0, Math.PI * 2);
+      ctx.fill();
 
-      // 스킬 게이지
-      const sgX = 16;
-      const sgY = panelY + 52;
-      const sgW = 260;
-      const sgH = 12;
-      const sgRatio = player.skillGauge / player.skillGaugeMax;
+      // 꼬리
+      ctx.strokeStyle = "#ffcc80";
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(w * 0.3, h * 0.1);
+      ctx.quadraticCurveTo(w * 0.45, h * 0.25, w * 0.25, h * 0.4);
+      ctx.stroke();
 
-      ctx.fillText("Skill Gauge", sgX, sgY - 4);
-      ctx.fillStyle = "#555";
-      ctx.fillRect(sgX, sgY, sgW, sgH);
-      ctx.fillStyle = "#00bcd4";
-      ctx.fillRect(sgX, sgY, sgW * sgRatio, sgH);
-      ctx.strokeStyle = "#222";
-      ctx.strokeRect(sgX, sgY, sgW, sgH);
-
-      ctx.font = "12px system-ui";
-      const canX = player.skillGauge >= player.skillXCost ? "READY" : "…";
-      const canC = player.skillGauge >= player.skillCCost ? "READY" : "…";
-      ctx.fillStyle = canX === "READY" ? "#00e676" : "#ccc";
-      ctx.fillText(`X: Skill1 (${player.skillXCost}) ${canX}`, sgX, sgY + 24);
-      ctx.fillStyle = canC === "READY" ? "#00e676" : "#ccc";
-      ctx.fillText(`C: Skill2 (${player.skillCCost}) ${canC}`, sgX, sgY + 40);
-
-      ctx.fillStyle = player.isGuarding ? "#00e676" : "#ccc";
-      ctx.fillText(`S: Guard (HOLD, 게이지 지속 소모)`, sgX, sgY + 56);
-
-      if (player.hp <= 0) {
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#ff5252";
-        ctx.textAlign = "center";
-        ctx.font = "28px system-ui";
-        ctx.fillText("게임 오버! F5로 다시 시작", canvas.width / 2, canvas.height / 2);
-        ctx.textAlign = "left";
-      }
+      ctx.restore();
     }
 
-    function gameLoop(timestamp) {
-      const dt = timestamp - lastTime;
-      lastTime = timestamp;
+    function drawMelee() {
+      if (!meleeActive) return;
+      const w = player.width;
+      const h = player.height;
+      const cx = player.x;
+      const cy = player.y;
 
-      if (player.hp > 0) {
-        update(dt);
-      }
-      draw();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.fillStyle = "rgba(255, 255, 0, 0.35)";
+      ctx.beginPath();
+      ctx.arc(0, -h * 0.1, w * 1.4, Math.PI * 1.1, Math.PI * 1.9);
+      ctx.arc(0, -h * 0.1, w * 0.5, Math.PI * 1.9, Math.PI * 1.1, true);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawBullets() {
+      bullets.forEach((b) => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(
+          b.x - b.width / 2,
+          b.y - b.height / 2,
+          b.width,
+          b.height
+        );
+      });
+    }
+
+    function drawEnemies() {
+      enemies.forEach((e) => {
+        const w = e.width;
+        const h = e.height;
+        ctx.save();
+        ctx.translate(e.x, e.y);
+
+        ctx.fillStyle = e.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -h / 2);
+        ctx.lineTo(-w * 0.18, -h * 0.1);
+        ctx.lineTo(-w * 0.14, h * 0.45);
+        ctx.lineTo(0, h * 0.35);
+        ctx.lineTo(w * 0.14, h * 0.45);
+        ctx.lineTo(w * 0.18, -h * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#e3f2fd";
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.5, 0);
+        ctx.lineTo(-w * 0.12, h * 0.05);
+        ctx.lineTo(-w * 0.12, h * 0.25);
+        ctx.lineTo(-w * 0.5, h * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(w * 0.5, 0);
+        ctx.lineTo(w * 0.12, h * 0.05);
+        ctx.lineTo(w * 0.12, h * 0.25);
+        ctx.lineTo(w * 0.5, h * 0.1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#bbdefb";
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.15, h * 0.25);
+        ctx.lineTo(-w * 0.05, h * 0.5);
+        ctx.lineTo(0, h * 0.35);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(w * 0.15, h * 0.25);
+        ctx.lineTo(w * 0.05, h * 0.5);
+        ctx.lineTo(0, h * 0.35);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = "#1e88e5";
+        ctx.beginPath();
+        ctx.ellipse(0, -h * 0.15, w * 0.15, h * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      });
+    }
+
+    function drawEnemyBullets() {
+      enemyBullets.forEach((b) => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(
+          b.x - b.width / 2,
+          b.y - b.height / 2,
+          b.width,
+          b.height
+        );
+      });
+    }
+
+    function drawPowerUps() {
+      powerUps.forEach((p) => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.beginPath();
+        ctx.arc(0, 0, p.radius, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.restore();
+      });
+    }
+
+    function drawBoss() {
+      if (!boss) return;
+      ctx.save();
+      ctx.translate(boss.x, boss.y);
+      ctx.fillStyle = "#9c27b0";
+      ctx.fillRect(-boss.width / 2, -boss.height / 2, boss.width, boss.height);
+
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(-boss.width / 4 - 10, -boss.height / 4, 20, 10);
+      ctx.fillRect(boss.width / 4 - 10, -boss.height / 4, 20, 10);
+      ctx.restore();
+    }
+
+    function gameLoop(t) {
+      if (!lastTime) lastTime = t;
+      const dt = t - lastTime;
+      lastTime = t;
+
+      ctx.clearRect(0, 0, WIDTH, HEIGHT);
+
+      update(dt);
+      drawPlayer();
+      drawMelee();
+      drawBullets();
+      drawEnemies();
+      drawEnemyBullets();
+      drawPowerUps();
+      drawBoss();
+
       requestAnimationFrame(gameLoop);
     }
 
@@ -1590,4 +1180,3 @@
   </script>
 </body>
 </html>
-
